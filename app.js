@@ -39,6 +39,7 @@ const els = {
   answerChoices: document.getElementById("answerChoices"),
   answerFeedback: document.getElementById("answerFeedback"),
   answerCheck: document.getElementById("answerCheck"),
+  answerExplanation: document.getElementById("answerExplanation"),
   revealCard: document.getElementById("revealCard"),
   flipButton: document.getElementById("flipButton"),
   prevCard: document.getElementById("prevCard"),
@@ -206,7 +207,7 @@ function renderStudyCard() {
     els.notesContent.textContent = "";
   }
   els.slideSearch.value = String(card.index + 1);
-  setGradeEnabled(state.revealed);
+  setGradeEnabled(state.revealed || state.answerChecked);
 }
 
 async function renderSlideSvg(slide, subject) {
@@ -294,7 +295,7 @@ function moveCard(delta) {
 }
 
 function gradeCurrent(grade) {
-  if (!state.revealed) return;
+  if (!state.revealed && !state.answerChecked) return;
   const subject = getSubject();
   const key = getProgressKey(subject.id, state.currentIndex);
   const previous = state.progress[key] || {};
@@ -415,7 +416,8 @@ function renderCurrentNotes() {
 }
 
 function renderAnswerPanel(slide) {
-  const answers = getAnswerKeys(slide?.notes || "");
+  const answerInfo = getAnswerInfo(slide?.notes || "");
+  const answers = answerInfo.keys;
   const isMulti = answers.length > 1;
   const hasAnswer = answers.length > 0;
   const isChecked = state.answerChecked;
@@ -439,8 +441,10 @@ function renderAnswerPanel(slide) {
   els.answerFeedback.classList.toggle("is-correct", isCorrect);
   els.answerFeedback.classList.toggle("is-wrong", isChecked && !isCorrect);
   els.answerFeedback.textContent = getAnswerFeedbackText(answers);
-  els.answerCheck.classList.toggle("is-hidden", !isMulti);
+  els.answerCheck.classList.toggle("is-hidden", !isMulti || isChecked);
   els.answerCheck.disabled = !hasAnswer || !isMulti || isChecked || state.selectedAnswers.length === 0;
+  els.answerExplanation.classList.toggle("is-hidden", !isChecked);
+  els.answerExplanation.textContent = isChecked ? answerInfo.explanation : "";
 }
 
 function handleAnswerChoice(answer) {
@@ -464,16 +468,24 @@ function checkAnswerSelection() {
   const answers = getAnswerKeys(getCurrentSlide()?.notes || "");
   if (answers.length === 0 || state.answerChecked || state.selectedAnswers.length === 0) return;
   state.answerChecked = true;
-  state.revealed = true;
   renderStudyCard();
 }
 
 function getAnswerKeys(note) {
+  return getAnswerInfo(note).keys;
+}
+
+function getAnswerInfo(note) {
   const text = note.trim();
-  if (!text) return [];
+  if (!text) return { keys: [], explanation: "Slide này chưa có giải thích." };
   const match = text.match(/^(?:answer\s*[:\-]?\s*|đáp\s*án\s*[:\-]?\s*)?\(?([A-Ea-e]{1,5})\)?(?=\s|$|[.,:)])/i);
-  if (!match) return [];
-  return [...new Set(match[1].toUpperCase().split("").filter((item) => answerOptions.includes(item)))].sort();
+  if (!match) return { keys: [], explanation: text || "Slide này chưa có giải thích." };
+  const keys = [...new Set(match[1].toUpperCase().split("").filter((item) => answerOptions.includes(item)))].sort();
+  const explanation = text.slice(match[0].length).trim().replace(/^[.)\]\-:,\s]+/, "");
+  return {
+    keys,
+    explanation: explanation || "Không có giải thích thêm.",
+  };
 }
 
 function isAnswerSelectionCorrect(answers) {

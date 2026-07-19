@@ -562,6 +562,23 @@ h2 {
   display: none;
 }
 
+.answer-explanation {
+  margin-top: var(--space-3);
+  padding: var(--space-4);
+  border-radius: 6px;
+  background: var(--surface-muted);
+  color: var(--ink);
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.55;
+  white-space: pre-wrap;
+  text-wrap: pretty;
+}
+
+.answer-explanation.is-hidden {
+  display: none;
+}
+
 .flashcard {
   margin: 0;
   perspective: 1600px;

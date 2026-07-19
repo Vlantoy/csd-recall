@@ -124,7 +124,7 @@ All spacing derives from a 4px base.
 - **Motion**: no decorative motion
 
 ### Answer Choices
-- **Structure**: A-E choice row, compact feedback label, check command only for multi-answer cards
+- **Structure**: A-E choice row, compact feedback label, explanation block shown after checking, check command only for multi-answer cards
 - **Variants**: single-answer, multi-answer, missing-answer
 - **States**: default, selected, correct, wrong, missed, disabled, focus
 - **Accessibility**: native buttons with pressed state and live feedback
