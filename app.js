@@ -20,24 +20,25 @@ let state = {
 const els = {
   subjectList: document.getElementById("subjectList"),
   queueList: document.getElementById("queueList"),
-  dueStat: document.getElementById("dueStat"),
-  weakStat: document.getElementById("weakStat"),
-  knownStat: document.getElementById("knownStat"),
-  courseBadge: document.getElementById("courseBadge"),
-  slideBadge: document.getElementById("slideBadge"),
+  headerSummary: document.getElementById("headerSummary"),
+  overallProgress: document.getElementById("overallProgress"),
+  courseEyebrow: document.getElementById("courseEyebrow"),
+  studyTitle: document.getElementById("studyTitle"),
+  cardPosition: document.getElementById("cardPosition"),
   statusBadge: document.getElementById("statusBadge"),
-  promptTitle: document.getElementById("promptTitle"),
-  promptHint: document.getElementById("promptHint"),
-  slideFrame: document.getElementById("slideFrame"),
+  sessionFill: document.getElementById("sessionFill"),
   frameLoading: document.getElementById("frameLoading"),
   slideCanvas: document.getElementById("slideCanvas"),
+  cardFront: document.getElementById("cardFront"),
   notesBack: document.getElementById("notesBack"),
   notesContent: document.getElementById("notesContent"),
   revealCard: document.getElementById("revealCard"),
+  flipButton: document.getElementById("flipButton"),
   prevCard: document.getElementById("prevCard"),
   nextCard: document.getElementById("nextCard"),
   resetProgress: document.getElementById("resetProgress"),
   slideSearch: document.getElementById("slideSearch"),
+  queueSummary: document.getElementById("queueSummary"),
 };
 
 void init();
@@ -67,10 +68,8 @@ function bindEvents() {
     });
   });
 
-  els.revealCard.addEventListener("click", () => {
-    state.revealed = !state.revealed;
-    renderStudyCard();
-  });
+  els.revealCard.addEventListener("click", toggleCard);
+  els.flipButton.addEventListener("click", toggleCard);
 
   els.prevCard.addEventListener("click", () => moveCard(-1));
   els.nextCard.addEventListener("click", () => moveCard(1));
@@ -93,7 +92,7 @@ function bindEvents() {
     const subject = getSubject();
     state.currentIndex = clamp(parsed - 1, 0, getSlideCount(subject) - 1);
     state.mode = "browse";
-    state.revealed = true;
+    state.revealed = false;
     renderAll();
   });
 
@@ -123,21 +122,31 @@ function renderAll() {
 function renderModeTabs() {
   document.querySelectorAll(".mode-button").forEach((button) => {
     button.classList.toggle("is-active", button.dataset.mode === state.mode);
-    button.setAttribute("aria-pressed", String(button.dataset.mode === state.mode));
+    button.setAttribute("aria-selected", String(button.dataset.mode === state.mode));
   });
 }
 
 function renderSubjects() {
   els.subjectList.innerHTML = subjects.map((subject) => {
     const stats = getSubjectStats(subject);
-    const percent = Math.round((stats.known / getSlideCount(subject)) * 100);
+    const knownPercent = Math.round((stats.known / stats.total) * 100);
+    const learningPercent = Math.round((stats.learning / stats.total) * 100);
     const active = subject.id === state.subjectId ? " is-active" : "";
     return `
-      <button class="subject-button${active}" type="button" data-subject="${subject.id}" aria-pressed="${subject.id === state.subjectId}">
-        <span class="subject-code">${subject.code}</span>
+      <button class="subject-button${active}" type="button" data-subject="${subject.id}" aria-pressed="${subject.id === state.subjectId}" aria-label="${subject.code}, tổng ${stats.total} thẻ, ${stats.remaining} còn lại, ${stats.known} đã chắc">
+        <span class="subject-card-top">
+          <span class="subject-code">${subject.code}</span>
+          <span class="subject-total">${formatNumber(stats.total)} thẻ</span>
+        </span>
         <span class="subject-title">${subject.title}</span>
-        <span class="subject-title">${stats.due} đến hạn, ${stats.weak} đang yếu</span>
-        <span class="progress-track" aria-hidden="true"><span class="progress-fill" style="width:${percent}%"></span></span>
+        <span class="subject-progress-copy">
+          <span><strong>${formatNumber(stats.remaining)}</strong> còn lại</span>
+          <span>${formatNumber(stats.known)} đã chắc</span>
+        </span>
+        <span class="progress-track" aria-hidden="true">
+          <span class="progress-known" style="width:${knownPercent}%"></span>
+          <span class="progress-learning" style="width:${learningPercent}%"></span>
+        </span>
       </button>
     `;
   }).join("");
@@ -158,14 +167,19 @@ function renderStudyCard() {
   const slide = getCurrentSlide();
   const progress = getCardProgress(subject.id, card.index);
   const statusText = getStatusText(progress);
+  const count = getSlideCount(subject);
 
-  els.courseBadge.textContent = subject.code;
-  els.slideBadge.textContent = `Slide ${card.index + 1}`;
+  els.courseEyebrow.textContent = subject.code;
+  els.studyTitle.textContent = subject.title;
+  els.cardPosition.textContent = `Thẻ ${formatNumber(card.index + 1)} / ${formatNumber(count)}`;
   els.statusBadge.textContent = statusText;
-  els.promptTitle.textContent = getPromptTitle(subject, card.index, progress);
-  els.promptHint.textContent = getPromptHint(progress);
-  els.revealCard.textContent = state.revealed ? "Ẩn chú thích" : "Lật thẻ";
-  els.notesBack.classList.toggle("is-hidden", !state.revealed);
+  els.sessionFill.style.transform = `scaleX(${(card.index + 1) / count})`;
+  els.revealCard.classList.toggle("is-revealed", state.revealed);
+  els.revealCard.setAttribute("aria-pressed", String(state.revealed));
+  els.revealCard.setAttribute("aria-label", getCardAccessibleLabel(subject, card.index, count, slide));
+  els.cardFront.setAttribute("aria-hidden", String(state.revealed));
+  els.notesBack.setAttribute("aria-hidden", String(!state.revealed));
+  els.flipButton.textContent = state.revealed ? "Xem lại slide" : "Lật thẻ";
   void renderSlideSvg(slide, subject);
   if (state.revealed) {
     renderCurrentNotes();
@@ -206,9 +220,11 @@ async function renderSlideSvg(slide, subject) {
 }
 
 function renderQueue() {
-  const queue = buildQueue().slice(0, 14);
+  const fullQueue = buildQueue();
+  const queue = fullQueue.slice(0, 8);
+  els.queueSummary.textContent = `${formatNumber(fullQueue.length)} thẻ`;
   if (queue.length === 0) {
-    els.queueList.innerHTML = `<div class="empty-state">Chưa có thẻ đến hạn. Hãy học mới vài slide, chấm "chưa biết" cho phần lủng để tạo lịch ôn.</div>`;
+    els.queueList.innerHTML = `<div class="empty-state">Chưa có thẻ đến hạn. Khi bạn tự chấm mức độ nhớ, các thẻ cần lặp lại sẽ xuất hiện ở đây.</div>`;
     return;
   }
 
@@ -235,15 +251,19 @@ function renderQueue() {
 function renderStats() {
   const allStats = subjects.reduce((acc, subject) => {
     const stats = getSubjectStats(subject);
-    acc.due += stats.due;
-    acc.weak += stats.weak;
+    acc.total += stats.total;
     acc.known += stats.known;
+    acc.remaining += stats.remaining;
     return acc;
-  }, { due: 0, weak: 0, known: 0 });
+  }, { total: 0, known: 0, remaining: 0 });
 
-  els.dueStat.textContent = String(allStats.due);
-  els.weakStat.textContent = String(allStats.weak);
-  els.knownStat.textContent = String(allStats.known);
+  els.headerSummary.textContent = `${formatNumber(allStats.total)} thẻ · ${formatNumber(allStats.known)} đã chắc`;
+  els.overallProgress.textContent = `${formatNumber(allStats.remaining)} thẻ còn lại`;
+}
+
+function toggleCard() {
+  state.revealed = !state.revealed;
+  renderStudyCard();
 }
 
 function moveCard(delta) {
@@ -305,21 +325,22 @@ function buildQueue() {
       const progress = getCardProgress(subject.id, index);
       if (!progress) {
         if (state.mode === "learn" && subject.id === state.subjectId) {
-          queue.push({ subject, index, dueAt: 0, label: "Chưa học" });
+          queue.push({ subject, index, priority: 1, dueAt: index, label: "Chưa học" });
         }
         continue;
       }
-      if (progress.dueAt <= now || progress.grade === "hard") {
+      if (progress.dueAt <= now) {
         queue.push({
           subject,
           index,
+          priority: 0,
           dueAt: progress.dueAt,
           label: progress.grade === "hard" ? "Cần lặp lại ngay" : "Đến lịch ôn",
         });
       }
     }
   });
-  return queue.sort((a, b) => a.dueAt - b.dueAt);
+  return queue.sort((a, b) => a.priority - b.priority || a.dueAt - b.dueAt);
 }
 
 function getSubjectStats(subject) {
@@ -327,15 +348,25 @@ function getSubjectStats(subject) {
   let due = 0;
   let weak = 0;
   let known = 0;
+  let seen = 0;
   const count = getSlideCount(subject);
   for (let index = 0; index < count; index += 1) {
     const progress = getCardProgress(subject.id, index);
     if (!progress) continue;
+    seen += 1;
     if (progress.grade === "hard") weak += 1;
     if (progress.grade === "easy" || progress.streak >= 2) known += 1;
     if (progress.dueAt <= now) due += 1;
   }
-  return { due, weak, known };
+  return {
+    due,
+    weak,
+    known,
+    seen,
+    learning: Math.max(0, seen - known),
+    remaining: count - known,
+    total: count,
+  };
 }
 
 function getCurrentCard() {
@@ -364,15 +395,13 @@ function renderCurrentNotes() {
   els.notesContent.textContent = note || "Slide này chưa có chú thích.";
 }
 
-function getPromptTitle(subject, index, progress) {
-  if (!progress) return `${subject.code} slide ${index + 1}: bạn còn nhớ nội dung chính không?`;
-  if (progress.grade === "hard") return `${subject.code} slide ${index + 1}: đây là phần đang lủng, hãy thử nhớ lại trước.`;
-  return `${subject.code} slide ${index + 1}: ôn lại để giữ nhịp nhớ.`;
-}
-
-function getPromptHint(progress) {
-  if (!progress) return "Nếu không nhớ được ý chính, chấm Chưa biết để app đưa slide này quay lại sớm.";
-  return `Đã xem ${progress.seen || 1} lần. Trạng thái gần nhất: ${getStatusText(progress)}.`;
+function getCardAccessibleLabel(subject, index, count, slide) {
+  const position = `${subject.code}, thẻ ${index + 1} trên ${count}.`;
+  if (!state.revealed) {
+    return `${position} Mặt trước là ảnh slide. Nhấn để xem chú thích.`;
+  }
+  const note = slide?.notes || "Slide này chưa có chú thích.";
+  return `${position} Chú thích: ${note} Nhấn để xem lại slide.`;
 }
 
 function getStatusText(progress) {
@@ -411,4 +440,8 @@ function saveProgress() {
 
 function clamp(value, min, max) {
   return Math.min(Math.max(value, min), max);
+}
+
+function formatNumber(value) {
+  return new Intl.NumberFormat("vi-VN").format(value);
 }

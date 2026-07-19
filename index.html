@@ -3,94 +3,116 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="Ung dung on tap theo mon voi the hoc va lap lai ngat quang tu cac file slide HTML.">
+  <meta name="description" content="Ứng dụng ôn tập theo môn với thẻ học và lặp lại ngắt quãng từ các file slide HTML.">
   <title>CSD Recall</title>
+  <link rel="icon" href="data:,">
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-  <div class="app-shell">
-    <aside class="subject-rail" aria-label="Danh sách môn học">
-      <div class="brand-block">
-        <div class="brand-mark" aria-hidden="true">CR</div>
+  <a class="skip-link" href="#studyCard">Đi tới thẻ học</a>
+
+  <header class="app-header">
+    <div class="header-inner">
+      <a class="brand" href="./" aria-label="CSD Recall - trang học">
+        <span class="brand-mark" aria-hidden="true">C</span>
+        <span>CSD Recall</span>
+      </a>
+      <p class="header-summary" id="headerSummary">Đang tải bộ thẻ...</p>
+      <button class="icon-text-button" type="button" id="resetProgress" title="Đặt lại toàn bộ tiến độ">
+        <span aria-hidden="true">↺</span>
+        <span>Đặt lại</span>
+      </button>
+    </div>
+  </header>
+
+  <main class="page-shell">
+    <section class="set-overview" aria-labelledby="overviewTitle">
+      <div class="section-heading">
         <div>
-          <p class="eyebrow">CSD Recall</p>
-          <h1>Ôn đúng phần đang lủng</h1>
+          <p class="section-kicker">Bộ môn của bạn</p>
+          <h1 id="overviewTitle">Hôm nay học gì?</h1>
         </div>
+        <p id="overallProgress" class="overall-progress">0 thẻ còn lại</p>
       </div>
       <div class="subject-list" id="subjectList"></div>
-    </aside>
+    </section>
 
-    <main class="study-stage">
-      <header class="topbar">
-        <div class="mode-tabs" role="group" aria-label="Che do hoc">
-          <button class="mode-button is-active" type="button" data-mode="review">Ôn đến hạn</button>
-          <button class="mode-button" type="button" data-mode="learn">Học mới</button>
-          <button class="mode-button" type="button" data-mode="browse">Duyệt slide</button>
+    <section class="study-workspace" aria-labelledby="studyTitle">
+      <div class="study-heading">
+        <div>
+          <p class="section-kicker" id="courseEyebrow">MKT101</p>
+          <h2 id="studyTitle">Marketing căn bản</h2>
         </div>
-        <label class="search-field">
-          <span>Tìm</span>
-          <input id="slideSearch" type="search" placeholder="Nhập số slide">
+        <label class="slide-jump">
+          <span>Đi tới thẻ</span>
+          <input id="slideSearch" type="number" min="1" inputmode="numeric" aria-label="Nhập số thẻ">
         </label>
-      </header>
+      </div>
 
-      <section class="stats-grid" aria-label="Tong quan tien do">
-        <article class="stat-card">
-          <span>Đến hạn</span>
-          <strong id="dueStat">0</strong>
-        </article>
-        <article class="stat-card">
-          <span>Đang yếu</span>
-          <strong id="weakStat">0</strong>
-        </article>
-        <article class="stat-card">
-          <span>Đã biết</span>
-          <strong id="knownStat">0</strong>
-        </article>
-      </section>
+      <nav class="mode-tabs" role="tablist" aria-label="Chế độ học">
+        <button class="mode-button" type="button" role="tab" data-mode="review">Ôn đến hạn</button>
+        <button class="mode-button is-active" type="button" role="tab" data-mode="learn">Học mới</button>
+        <button class="mode-button" type="button" role="tab" data-mode="browse">Duyệt tất cả</button>
+      </nav>
 
-      <section class="study-card" id="studyCard" aria-live="polite">
-        <div class="card-meta">
-          <span id="courseBadge" class="badge">MKT101</span>
-          <span id="slideBadge">Slide 1</span>
+      <div class="session-progress" aria-label="Tiến độ trong môn hiện tại">
+        <div class="session-progress-copy">
+          <span id="cardPosition">Thẻ 1 / 1</span>
           <span id="statusBadge">Chưa học</span>
         </div>
-        <div class="prompt-face" id="promptFace">
-          <p class="prompt-kicker">Mặt trước</p>
-          <h2 id="promptTitle">Xem ảnh câu hỏi, sau đó lật thẻ để xem chú thích.</h2>
-          <p id="promptHint">Đáp án và giải thích lấy từ speaker notes của slide gốc.</p>
+        <div class="session-track" aria-hidden="true">
+          <span class="session-fill" id="sessionFill"></span>
         </div>
-        <div class="slide-frame" id="slideFrame">
-          <div class="frame-loading" id="frameLoading">Đang tải dữ liệu...</div>
-          <div class="slide-canvas" id="slideCanvas" role="img" aria-label="Ảnh slide câu hỏi"></div>
-        </div>
-        <div class="notes-back is-hidden" id="notesBack">
-          <p class="prompt-kicker">Mặt sau</p>
-          <div id="notesContent"></div>
-        </div>
-        <div class="action-bar">
-          <button class="secondary-action" type="button" id="prevCard">Trước</button>
-          <button class="primary-action" type="button" id="revealCard">Lật thẻ</button>
-          <button class="secondary-action" type="button" id="nextCard">Sau</button>
-        </div>
-        <div class="grade-bar">
-          <button class="grade-button hard" type="button" data-grade="hard">Chưa biết</button>
-          <button class="grade-button good" type="button" data-grade="good">Tạm ổn</button>
-          <button class="grade-button easy" type="button" data-grade="easy">Đã chắc</button>
-        </div>
-      </section>
-    </main>
+      </div>
 
-    <aside class="queue-rail" aria-label="Hang doi on tap">
-      <div class="panel-header">
-        <div>
-          <p class="eyebrow">Hang doi</p>
-          <h2>Cần ôn tiếp</h2>
+      <article class="flashcard" id="studyCard" aria-live="polite">
+        <button class="flashcard-surface" id="revealCard" type="button" aria-label="Lật thẻ để xem chú thích" aria-pressed="false">
+          <span class="card-face card-front" id="cardFront">
+            <span class="frame-loading" id="frameLoading">Đang tải slide...</span>
+            <span class="slide-canvas" id="slideCanvas" role="img" aria-label="Ảnh slide câu hỏi"></span>
+            <span class="flip-hint">Nhấn để lật</span>
+          </span>
+          <span class="card-face card-back" id="notesBack" aria-hidden="true">
+            <span class="answer-label">Chú thích</span>
+            <span id="notesContent" class="notes-content"></span>
+            <span class="flip-hint">Nhấn để xem lại slide</span>
+          </span>
+        </button>
+      </article>
+
+      <div class="navigation-controls" aria-label="Điều khiển thẻ">
+        <button class="round-button" type="button" id="prevCard" aria-label="Thẻ trước" title="Thẻ trước (mũi tên trái)">‹</button>
+        <button class="flip-button" type="button" id="flipButton">Lật thẻ</button>
+        <button class="round-button" type="button" id="nextCard" aria-label="Thẻ sau" title="Thẻ sau (mũi tên phải)">›</button>
+      </div>
+
+      <div class="grade-panel" id="gradePanel" aria-label="Tự đánh giá mức độ nhớ">
+        <p>Bạn nhớ phần này tới đâu?</p>
+        <div class="grade-buttons">
+          <button class="grade-button hard" type="button" data-grade="hard">
+            <span>Chưa biết</span><small>Lặp lại sớm</small>
+          </button>
+          <button class="grade-button good" type="button" data-grade="good">
+            <span>Hơi nhớ</span><small>Ôn ngày mai</small>
+          </button>
+          <button class="grade-button easy" type="button" data-grade="easy">
+            <span>Đã chắc</span><small>Ôn sau 4 ngày</small>
+          </button>
         </div>
-        <button class="ghost-action" type="button" id="resetProgress">Đặt lại</button>
+      </div>
+    </section>
+
+    <section class="queue-section" aria-labelledby="queueTitle">
+      <div class="section-heading queue-heading">
+        <div>
+          <p class="section-kicker">Lặp lại ngắt quãng</p>
+          <h2 id="queueTitle">Sắp tới cần ôn</h2>
+        </div>
+        <p id="queueSummary" class="overall-progress">0 thẻ</p>
       </div>
       <div class="queue-list" id="queueList"></div>
-    </aside>
-  </div>
+    </section>
+  </main>
 
   <script src="app.js"></script>
 </body>
