@@ -1,33 +1,6 @@
 "use strict";
 
-const subjects = [
-  {
-    id: "mkt101",
-    code: "MKT101",
-    title: "Marketing căn bản",
-    file: "SEMESTER_1_MKT101.html",
-    chunks: [
-      "chunks/SEMESTER_1_MKT101.html.part001",
-      "chunks/SEMESTER_1_MKT101.html.part002",
-      "chunks/SEMESTER_1_MKT101.html.part003",
-    ],
-    estimatedSlides: 120,
-  },
-  {
-    id: "eco121",
-    code: "ECO121",
-    title: "Kinh tế học",
-    file: "SEMESTER_2_ECO121 (1).html",
-    estimatedSlides: 90,
-  },
-  {
-    id: "fin202",
-    code: "FIN202",
-    title: "Tài chính doanh nghiệp",
-    file: "SEMESTER_2_FIN202.html",
-    estimatedSlides: 90,
-  },
-];
+let subjects = [];
 
 const storageKey = "csd-recall-progress-v1";
 const intervals = {
@@ -37,14 +10,12 @@ const intervals = {
 };
 
 let state = {
-  subjectId: subjects[0].id,
+  subjectId: "",
   mode: "learn",
   currentIndex: 0,
   revealed: false,
   progress: loadProgress(),
 };
-
-const frameSources = {};
 
 const els = {
   subjectList: document.getElementById("subjectList"),
@@ -57,9 +28,9 @@ const els = {
   statusBadge: document.getElementById("statusBadge"),
   promptTitle: document.getElementById("promptTitle"),
   promptHint: document.getElementById("promptHint"),
-  answerFrame: document.getElementById("answerFrame"),
+  slideFrame: document.getElementById("slideFrame"),
   frameLoading: document.getElementById("frameLoading"),
-  sourceFrame: document.getElementById("sourceFrame"),
+  slideCanvas: document.getElementById("slideCanvas"),
   notesBack: document.getElementById("notesBack"),
   notesContent: document.getElementById("notesContent"),
   revealCard: document.getElementById("revealCard"),
@@ -69,12 +40,21 @@ const els = {
   slideSearch: document.getElementById("slideSearch"),
 };
 
-init();
+void init();
 
-function init() {
-  renderSubjects();
-  renderAll();
+async function init() {
   bindEvents();
+  await loadManifest();
+  state.subjectId = subjects[0].id;
+  state.currentIndex = pickInitialIndex();
+  renderAll();
+}
+
+async function loadManifest() {
+  const response = await fetch("data/slides.json");
+  if (!response.ok) throw new Error("Cannot load slide data");
+  const data = await response.json();
+  subjects = data.subjects;
 }
 
 function bindEvents() {
@@ -115,12 +95,6 @@ function bindEvents() {
     state.mode = "browse";
     state.revealed = true;
     renderAll();
-  });
-
-  els.sourceFrame.addEventListener("load", () => {
-    syncFrameToCurrentSlide();
-    learnActualSlideCount();
-    els.frameLoading.classList.add("is-hidden");
   });
 
   window.addEventListener("keydown", (event) => {
@@ -181,6 +155,7 @@ function renderSubjects() {
 function renderStudyCard() {
   const subject = getSubject();
   const card = getCurrentCard();
+  const slide = getCurrentSlide();
   const progress = getCardProgress(subject.id, card.index);
   const statusText = getStatusText(progress);
 
@@ -190,9 +165,8 @@ function renderStudyCard() {
   els.promptTitle.textContent = getPromptTitle(subject, card.index, progress);
   els.promptHint.textContent = getPromptHint(progress);
   els.revealCard.textContent = state.revealed ? "Ẩn chú thích" : "Lật thẻ";
-  els.answerFrame.classList.remove("is-hidden");
   els.notesBack.classList.toggle("is-hidden", !state.revealed);
-  void loadFrameSource(subject);
+  void renderSlideSvg(slide, subject);
   if (state.revealed) {
     renderCurrentNotes();
   } else {
@@ -202,29 +176,33 @@ function renderStudyCard() {
   setGradeEnabled(state.revealed);
 }
 
-async function loadFrameSource(subject) {
+async function renderSlideSvg(slide, subject) {
+  if (!slide) return;
+  if (els.slideCanvas.dataset.src === slide.image) return;
+
   els.frameLoading.classList.remove("is-hidden");
-  const source = await getSubjectFrameSource(subject);
-  if (els.sourceFrame.getAttribute("src") !== source) {
-    els.sourceFrame.src = source;
-  } else {
-    syncFrameToCurrentSlide();
+  els.slideCanvas.dataset.src = slide.image;
+  els.slideCanvas.setAttribute("aria-label", `${subject.code} slide ${slide.number}`);
+
+  try {
+    const response = await fetch(slide.image);
+    if (!response.ok) throw new Error(`Cannot load ${slide.image}`);
+    const svgText = (await response.text()).replace(/@font-face\s*\{[^}]*filesystem:[^}]*\}/g, "");
+    const documentSvg = new DOMParser().parseFromString(svgText, "image/svg+xml");
+    const svg = documentSvg.documentElement;
+    if (svg.nodeName.toLowerCase() !== "svg") throw new Error("Invalid SVG");
+
+    svg.removeAttribute("style");
+    svg.setAttribute("preserveAspectRatio", "xMidYMid meet");
+    svg.setAttribute("focusable", "false");
+    svg.setAttribute("aria-hidden", "true");
+    els.slideCanvas.replaceChildren(document.importNode(svg, true));
+  } catch (error) {
+    els.slideCanvas.textContent = "Không tải được ảnh slide.";
+    console.error(error);
+  } finally {
     els.frameLoading.classList.add("is-hidden");
   }
-}
-
-async function getSubjectFrameSource(subject) {
-  if (!subject.chunks) return subject.file;
-  if (frameSources[subject.id]) return frameSources[subject.id];
-
-  const buffers = await Promise.all(subject.chunks.map(async (chunkPath) => {
-    const response = await fetch(chunkPath);
-    if (!response.ok) throw new Error(`Cannot load ${chunkPath}`);
-    return response.arrayBuffer();
-  }));
-  const blob = new Blob(buffers, { type: "text/html;charset=utf-8" });
-  frameSources[subject.id] = URL.createObjectURL(blob);
-  return frameSources[subject.id];
 }
 
 function renderQueue() {
@@ -368,56 +346,22 @@ function getCurrentCard() {
   };
 }
 
+function getCurrentSlide() {
+  const subject = getSubject();
+  return subject.slides[getCurrentCard().index];
+}
+
 function getSubject() {
-  return subjects.find((subject) => subject.id === state.subjectId) || subjects[0];
+  return subjects.find((subject) => subject.id === state.subjectId) || subjects[0] || { slides: [] };
 }
 
 function getSlideCount(subject) {
-  return subject.actualSlides || subject.estimatedSlides;
-}
-
-function learnActualSlideCount() {
-  try {
-    const frameWindow = els.sourceFrame.contentWindow;
-    const count = frameWindow.document.querySelectorAll(".thumbnail-item").length;
-    const subject = getSubject();
-    if (count > 0 && subject.actualSlides !== count) {
-      subject.actualSlides = count;
-      renderSubjects();
-      renderStats();
-    }
-  } catch {
-  }
-}
-
-function syncFrameToCurrentSlide() {
-  try {
-    const frameWindow = els.sourceFrame.contentWindow;
-    if (frameWindow && typeof frameWindow.showSlide === "function") {
-      frameWindow.showSlide(state.currentIndex);
-      if (state.revealed) renderCurrentNotes();
-    }
-  } catch {
-  }
+  return subject.slides.length;
 }
 
 function renderCurrentNotes() {
-  const note = readCurrentNote();
+  const note = getCurrentSlide()?.notes || "";
   els.notesContent.textContent = note || "Slide này chưa có chú thích.";
-}
-
-function readCurrentNote() {
-  try {
-    const frameWindow = els.sourceFrame.contentWindow;
-    const note = frameWindow.eval(`slides[${state.currentIndex}].notes`);
-    return normalizeFlowText(note);
-  } catch {
-    return "";
-  }
-}
-
-function normalizeFlowText(raw) {
-  return String(raw || "").replace(/\s+/g, " ").trim();
 }
 
 function getPromptTitle(subject, index, progress) {

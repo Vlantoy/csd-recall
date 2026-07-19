@@ -1,10 +1,10 @@
 # CSD Recall
 
-Trang học kiểu Quizlet cho 3 file slide HTML trong thư mục này.
+Trang học kiểu Quizlet được trích xuất từ 3 file slide HTML. Mặt trước là ảnh slide, mặt sau là speaker notes chứa đáp án và giải thích.
 
 ## Mở trên máy
 
-Nếu chỉ xem giao diện thì có thể mở `index.html` trực tiếp. Để nút "Lật thẻ" điều khiển đúng slide bên trong file nguồn, chạy server local:
+Chạy server local:
 
 ```bash
 node server.js
@@ -25,19 +25,24 @@ http://127.0.0.1:4173
    - `app.js`
    - `DESIGN.md`
    - `.nojekyll`
-   - `chunks/SEMESTER_1_MKT101.html.part001`
-   - `chunks/SEMESTER_1_MKT101.html.part002`
-   - `chunks/SEMESTER_1_MKT101.html.part003`
-   - `SEMESTER_2_ECO121 (1).html`
-   - `SEMESTER_2_FIN202.html`
+   - `data/slides.json`
+   - thư mục `slides/`
 3. Vào repository trên GitHub: `Settings` -> `Pages`.
 4. Chọn `Deploy from a branch`.
 5. Chọn branch `main`, folder `/root`, rồi bấm `Save`.
 6. Mở URL GitHub Pages GitHub cấp.
 
-Không cần upload `node_modules`, `qa-desktop.png`, hoặc `qa-mobile.png`.
+Không cần upload `node_modules`, `qa-desktop.png`, `qa-mobile.png`, `chunks/`, hoặc các file `SEMESTER_*.html` gốc.
 
-`SEMESTER_1_MKT101.html` lớn hơn giới hạn 100MB của GitHub, nên bản Pages dùng 3 file chunk trong thư mục `chunks/`. File gốc vẫn có thể giữ ở máy, nhưng không cần push lên GitHub.
+## Trích xuất lại dữ liệu
+
+Nếu file slide gốc thay đổi, đặt các file `SEMESTER_*.html` trong thư mục này rồi chạy:
+
+```bash
+node extract-slides.js
+```
+
+Lệnh này tạo lại `data/slides.json` và các ảnh SVG trong `slides/`.
 
 ## Lưu tiến độ
 
