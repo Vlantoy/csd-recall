@@ -187,16 +187,18 @@ function renderStudyCard() {
 
 async function renderSlideSvg(slide, subject) {
   if (!slide) return;
-  if (els.slideCanvas.dataset.src === slide.image) return;
+  const requestedSrc = slide.image;
+  if (els.slideCanvas.dataset.src === requestedSrc) return;
 
   els.frameLoading.classList.remove("is-hidden");
-  els.slideCanvas.dataset.src = slide.image;
+  els.slideCanvas.dataset.src = requestedSrc;
   els.slideCanvas.setAttribute("aria-label", `${subject.code} slide ${slide.number}`);
 
   try {
-    const response = await fetch(slide.image);
-    if (!response.ok) throw new Error(`Cannot load ${slide.image}`);
+    const response = await fetch(requestedSrc);
+    if (!response.ok) throw new Error(`Cannot load ${requestedSrc}`);
     const svgText = (await response.text()).replace(/@font-face\s*\{[^}]*filesystem:[^}]*\}/g, "");
+    if (els.slideCanvas.dataset.src !== requestedSrc) return;
     const documentSvg = new DOMParser().parseFromString(svgText, "image/svg+xml");
     const svg = documentSvg.documentElement;
     if (svg.nodeName.toLowerCase() !== "svg") throw new Error("Invalid SVG");
@@ -207,10 +209,13 @@ async function renderSlideSvg(slide, subject) {
     svg.setAttribute("aria-hidden", "true");
     els.slideCanvas.replaceChildren(document.importNode(svg, true));
   } catch (error) {
+    if (els.slideCanvas.dataset.src !== requestedSrc) return;
     els.slideCanvas.textContent = "Không tải được ảnh slide.";
     console.error(error);
   } finally {
-    els.frameLoading.classList.add("is-hidden");
+    if (els.slideCanvas.dataset.src === requestedSrc) {
+      els.frameLoading.classList.add("is-hidden");
+    }
   }
 }
 
