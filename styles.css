@@ -325,7 +325,7 @@ h1 {
   display: grid;
   align-content: center;
   gap: var(--space-3);
-  padding: var(--space-8);
+  padding: var(--space-5);
   border-radius: 16px;
   background: var(--surface-secondary);
 }
@@ -338,14 +338,14 @@ h1 {
 
 .prompt-face h2 {
   max-width: 760px;
-  font-size: 36px;
+  font-size: 26px;
   line-height: 1.15;
 }
 
 .prompt-face p:last-child {
   max-width: 620px;
   color: var(--text-secondary);
-  font-size: 18px;
+  font-size: 16px;
   line-height: 1.45;
 }
 
@@ -388,6 +388,26 @@ h1 {
   height: 100%;
   min-height: 420px;
   border: 0;
+}
+
+.notes-back {
+  display: grid;
+  gap: var(--space-3);
+  padding: var(--space-6);
+  border: 1px solid var(--border-default);
+  border-radius: 12px;
+  background: #f2f9ff;
+  color: var(--text-primary);
+}
+
+.notes-back.is-hidden {
+  display: none;
+}
+
+.notes-back #notesContent {
+  font-size: 18px;
+  line-height: 1.55;
+  white-space: pre-wrap;
 }
 
 .action-bar,

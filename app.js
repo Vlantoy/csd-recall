@@ -60,6 +60,8 @@ const els = {
   answerFrame: document.getElementById("answerFrame"),
   frameLoading: document.getElementById("frameLoading"),
   sourceFrame: document.getElementById("sourceFrame"),
+  notesBack: document.getElementById("notesBack"),
+  notesContent: document.getElementById("notesContent"),
   revealCard: document.getElementById("revealCard"),
   prevCard: document.getElementById("prevCard"),
   nextCard: document.getElementById("nextCard"),
@@ -187,12 +189,14 @@ function renderStudyCard() {
   els.statusBadge.textContent = statusText;
   els.promptTitle.textContent = getPromptTitle(subject, card.index, progress);
   els.promptHint.textContent = getPromptHint(progress);
-  els.revealCard.textContent = state.revealed ? "Ẩn slide" : "Lật thẻ";
-  els.answerFrame.classList.toggle("is-hidden", !state.revealed);
+  els.revealCard.textContent = state.revealed ? "Ẩn chú thích" : "Lật thẻ";
+  els.answerFrame.classList.remove("is-hidden");
+  els.notesBack.classList.toggle("is-hidden", !state.revealed);
+  void loadFrameSource(subject);
   if (state.revealed) {
-    void loadFrameSource(subject);
+    renderCurrentNotes();
   } else {
-    els.frameLoading.classList.add("is-hidden");
+    els.notesContent.textContent = "";
   }
   els.slideSearch.value = String(card.index + 1);
   setGradeEnabled(state.revealed);
@@ -387,14 +391,33 @@ function learnActualSlideCount() {
 }
 
 function syncFrameToCurrentSlide() {
-  if (!state.revealed) return;
   try {
     const frameWindow = els.sourceFrame.contentWindow;
     if (frameWindow && typeof frameWindow.showSlide === "function") {
       frameWindow.showSlide(state.currentIndex);
+      if (state.revealed) renderCurrentNotes();
     }
   } catch {
   }
+}
+
+function renderCurrentNotes() {
+  const note = readCurrentNote();
+  els.notesContent.textContent = note || "Slide này chưa có chú thích.";
+}
+
+function readCurrentNote() {
+  try {
+    const frameWindow = els.sourceFrame.contentWindow;
+    const note = frameWindow.eval(`slides[${state.currentIndex}].notes`);
+    return normalizeFlowText(note);
+  } catch {
+    return "";
+  }
+}
+
+function normalizeFlowText(raw) {
+  return String(raw || "").replace(/\s+/g, " ").trim();
 }
 
 function getPromptTitle(subject, index, progress) {

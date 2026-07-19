@@ -55,13 +55,17 @@
           <span id="statusBadge">Chưa học</span>
         </div>
         <div class="prompt-face" id="promptFace">
-          <p class="prompt-kicker">Tự kiểm tra</p>
-          <h2 id="promptTitle">Hãy nhớ lại nội dung slide này trước khi xem đáp án.</h2>
-          <p id="promptHint">Bấm "Lật thẻ" để mở slide gốc, sau đó tự chấm mức độ nhớ.</p>
+          <p class="prompt-kicker">Mặt trước</p>
+          <h2 id="promptTitle">Xem ảnh câu hỏi, sau đó lật thẻ để xem chú thích.</h2>
+          <p id="promptHint">Đáp án và giải thích lấy từ speaker notes của slide gốc.</p>
         </div>
-        <div class="answer-frame is-hidden" id="answerFrame">
+        <div class="answer-frame" id="answerFrame">
           <div class="frame-loading is-hidden" id="frameLoading">Đang tải slide gốc...</div>
           <iframe id="sourceFrame" title="Slide nguon"></iframe>
+        </div>
+        <div class="notes-back is-hidden" id="notesBack">
+          <p class="prompt-kicker">Mặt sau</p>
+          <div id="notesContent"></div>
         </div>
         <div class="action-bar">
           <button class="secondary-action" type="button" id="prevCard">Trước</button>
