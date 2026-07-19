@@ -26,6 +26,11 @@ CSD Recall feels like a focused digital flashcard desk: bright, direct, and buil
 | Learning | --learning | #ffcd1f | Cards still being learned |
 | Hard | --hard | #e64b4b | Cards needing immediate review |
 | Known | --known | #2eaf7d | Mastered cards |
+| Heatmap empty | --heatmap-empty | #dfe3ee | Unseen heatmap cells |
+| Heatmap due | --heatmap-due | #f19898 | Due or hard heatmap cells |
+| Heatmap learning | --heatmap-learning | #ffe17a | Learning heatmap cells |
+| Heatmap known | --heatmap-known | #70caa4 | Known heatmap cells |
+| Heatmap active | --heatmap-active | #282e3e | Current card heatmap cell |
 | Shadow | --shadow-color | rgba(46, 54, 84, 0.12) | Elevated study card |
 | Shadow strong | --shadow-strong | rgba(46, 54, 84, 0.18) | Hovered study card |
 
@@ -80,6 +85,7 @@ All spacing derives from a 4px base.
 - App header spans the viewport; study content is centered at a 1120px maximum.
 - Subject cards form a three-column overview at desktop and a horizontal snap row on narrow screens.
 - The flashcard uses a stable 16:9 front and matching back surface.
+- Heatmaps use compact fixed cells that wrap on mobile without changing card controls.
 - Breakpoints: 760px for compact controls, 980px for subject overview changes.
 
 ## 5. Components
@@ -108,7 +114,14 @@ All spacing derives from a 4px base.
 - **Variants**: front, revealed, loading, error
 - **States**: clickable surface, keyboard flip, focused card
 - **Accessibility**: card button announces front/back state; embedded SVG is decorative to the card label
-- **Motion**: 220ms opacity and transform between faces; reduced-motion fallback
+- **Motion**: 320ms 3D rotateY flip; reduced-motion fallback uses opacity
+
+### Progress Heatmap
+- **Structure**: small status cells for each subject overview and the active study set
+- **Variants**: unseen, due/hard, learning, known, active
+- **States**: visual only, summarized by the parent region label
+- **Accessibility**: subject-level and active-set summary labels carry the counts
+- **Motion**: no decorative motion
 
 ### Study Controls
 - **Structure**: previous, flip, next, then spaced-repetition grade controls
@@ -128,7 +141,7 @@ All spacing derives from a 4px base.
 | Type | Duration | Easing | Usage |
 |------|----------|--------|-------|
 | Micro | 140ms | ease-out | Buttons and tabs |
-| Standard | 220ms | ease-in-out | Flashcard face transition |
+| Standard | 220ms | ease-in-out | Progress and secondary transitions |
 | Emphasis | 320ms | cubic-bezier(0.16, 1, 0.3, 1) | Subject change card entrance |
 
 - Animate only opacity and transform.

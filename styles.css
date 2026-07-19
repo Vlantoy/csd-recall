@@ -17,6 +17,11 @@
   --known: #2eaf7d;
   --shadow-color: rgba(46, 54, 84, 0.12);
   --shadow-strong: rgba(46, 54, 84, 0.18);
+  --heatmap-empty: #dfe3ee;
+  --heatmap-due: #f19898;
+  --heatmap-learning: #ffe17a;
+  --heatmap-known: #70caa4;
+  --heatmap-active: #282e3e;
   --space-1: 4px;
   --space-2: 8px;
   --space-3: 12px;
@@ -76,10 +81,18 @@ p {
   padding: var(--space-3) var(--space-4);
   background: var(--ink);
   color: var(--on-accent);
+  clip: rect(0 0 0 0);
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
   transform: translateY(-150%);
 }
 
-.skip-link:focus {
+.skip-link:focus-visible {
+  clip: auto;
+  width: auto;
+  height: auto;
+  overflow: visible;
   transform: translateY(0);
 }
 
@@ -289,7 +302,9 @@ h2 {
 }
 
 .progress-track,
-.session-track {
+.session-track,
+.subject-heatmap,
+.study-heatmap {
   position: relative;
   overflow: hidden;
   background: var(--surface-hover);
@@ -314,6 +329,39 @@ h2 {
 
 .progress-learning {
   background: var(--learning);
+}
+
+.subject-heatmap {
+  min-height: 24px;
+  display: grid;
+  grid-template-columns: repeat(24, minmax(0, 1fr));
+  gap: 2px;
+  padding: var(--space-1);
+  border-radius: 4px;
+}
+
+.heatmap-cell {
+  min-width: 0;
+  min-height: 4px;
+  border-radius: 1px;
+  background: var(--heatmap-empty);
+}
+
+.heatmap-cell.is-due,
+.heatmap-cell.is-hard {
+  background: var(--heatmap-due);
+}
+
+.heatmap-cell.is-learning {
+  background: var(--heatmap-learning);
+}
+
+.heatmap-cell.is-known {
+  background: var(--heatmap-known);
+}
+
+.heatmap-cell.is-active {
+  background: var(--heatmap-active);
 }
 
 .study-workspace {
@@ -394,8 +442,19 @@ h2 {
   transform-origin: left center;
 }
 
+.study-heatmap {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(7px, 1fr));
+  gap: 3px;
+  margin-top: var(--space-4);
+  padding: var(--space-3);
+  border-radius: 6px;
+  border: 1px solid var(--line);
+}
+
 .flashcard {
   margin: 0;
+  perspective: 1600px;
 }
 
 .flashcard-surface {
@@ -410,10 +469,16 @@ h2 {
   background: var(--surface);
   box-shadow: 0 12px 32px var(--shadow-color);
   text-align: left;
+  transform-style: preserve-3d;
+  transition: transform 320ms cubic-bezier(0.16, 1, 0.3, 1), box-shadow 140ms ease-out;
 }
 
 .flashcard-surface:hover {
   box-shadow: 0 12px 32px var(--shadow-strong);
+}
+
+.flashcard-surface.is-revealed {
+  transform: rotateY(180deg);
 }
 
 .card-face {
@@ -421,8 +486,8 @@ h2 {
   inset: 0;
   display: grid;
   opacity: 1;
-  transform: translateY(0);
-  transition: opacity 220ms ease-in-out, transform 220ms ease-in-out;
+  backface-visibility: hidden;
+  transition: opacity 220ms ease-in-out;
 }
 
 .card-front {
@@ -435,20 +500,15 @@ h2 {
   gap: var(--space-4);
   padding: var(--space-8);
   background: var(--surface);
-  opacity: 0;
-  transform: translateY(var(--space-2));
+  transform: rotateY(180deg);
   pointer-events: none;
 }
 
 .flashcard-surface.is-revealed .card-front {
-  opacity: 0;
-  transform: translateY(calc(var(--space-2) * -1));
   pointer-events: none;
 }
 
 .flashcard-surface.is-revealed .card-back {
-  opacity: 1;
-  transform: translateY(0);
   pointer-events: auto;
 }
 
@@ -728,6 +788,12 @@ h2 {
     aspect-ratio: auto;
   }
 
+  .study-heatmap {
+    grid-template-columns: repeat(auto-fill, minmax(6px, 1fr));
+    gap: 2px;
+    padding: var(--space-2);
+  }
+
   .card-back {
     padding: var(--space-5);
   }
@@ -761,5 +827,18 @@ h2 {
   *::after {
     transition-duration: 1ms !important;
     scroll-behavior: auto !important;
+  }
+
+  .flashcard-surface.is-revealed {
+    transform: none;
+  }
+
+  .flashcard-surface.is-revealed .card-front {
+    opacity: 0;
+  }
+
+  .flashcard-surface.is-revealed .card-back {
+    opacity: 1;
+    transform: none;
   }
 }

@@ -32,6 +32,7 @@ const els = {
   cardFront: document.getElementById("cardFront"),
   notesBack: document.getElementById("notesBack"),
   notesContent: document.getElementById("notesContent"),
+  studyHeatmap: document.getElementById("studyHeatmap"),
   revealCard: document.getElementById("revealCard"),
   flipButton: document.getElementById("flipButton"),
   prevCard: document.getElementById("prevCard"),
@@ -147,6 +148,7 @@ function renderSubjects() {
           <span class="progress-known" style="width:${knownPercent}%"></span>
           <span class="progress-learning" style="width:${learningPercent}%"></span>
         </span>
+        <span class="subject-heatmap" aria-hidden="true">${renderSubjectHeatmap(subject, 48)}</span>
       </button>
     `;
   }).join("");
@@ -179,7 +181,8 @@ function renderStudyCard() {
   els.revealCard.setAttribute("aria-label", getCardAccessibleLabel(subject, card.index, count, slide));
   els.cardFront.setAttribute("aria-hidden", String(state.revealed));
   els.notesBack.setAttribute("aria-hidden", String(!state.revealed));
-  els.flipButton.textContent = state.revealed ? "Xem lại slide" : "Lật thẻ";
+  els.flipButton.textContent = state.revealed ? "Xem lại câu hỏi" : "Lật thẻ";
+  renderStudyHeatmap(subject, card.index);
   void renderSlideSvg(slide, subject);
   if (state.revealed) {
     renderCurrentNotes();
@@ -270,7 +273,7 @@ function moveCard(delta) {
   const subject = getSubject();
   const count = getSlideCount(subject);
   state.currentIndex = (state.currentIndex + delta + count) % count;
-  state.revealed = state.mode === "browse";
+  state.revealed = false;
   renderAll();
 }
 
@@ -392,16 +395,77 @@ function getSlideCount(subject) {
 
 function renderCurrentNotes() {
   const note = getCurrentSlide()?.notes || "";
-  els.notesContent.textContent = note || "Slide này chưa có chú thích.";
+  els.notesContent.textContent = note || "Slide này chưa có đáp án.";
 }
 
 function getCardAccessibleLabel(subject, index, count, slide) {
   const position = `${subject.code}, thẻ ${index + 1} trên ${count}.`;
   if (!state.revealed) {
-    return `${position} Mặt trước là ảnh slide. Nhấn để xem chú thích.`;
+    return `${position} Mặt trước là ảnh slide. Nhấn để xem đáp án.`;
   }
-  const note = slide?.notes || "Slide này chưa có chú thích.";
-  return `${position} Chú thích: ${note} Nhấn để xem lại slide.`;
+  const note = slide?.notes || "Slide này chưa có đáp án.";
+  return `${position} Đáp án: ${note} Nhấn để xem lại câu hỏi.`;
+}
+
+function renderStudyHeatmap(subject, activeIndex) {
+  const cells = subject.slides.map((_, index) => {
+    const stateName = getCardStudyState(subject.id, index);
+    const activeClass = index === activeIndex ? " is-active" : "";
+    return `<span class="heatmap-cell is-${stateName}${activeClass}" title="${subject.code} thẻ ${index + 1}: ${getHeatmapLabel(stateName)}"></span>`;
+  });
+  els.studyHeatmap.innerHTML = cells.join("");
+  els.studyHeatmap.setAttribute("aria-label", `Heatmap ${subject.code}: ${getSubjectHeatmapSummary(subject)}`);
+}
+
+function renderSubjectHeatmap(subject, buckets) {
+  const count = getSlideCount(subject);
+  return Array.from({ length: buckets }, (_, bucketIndex) => {
+    const start = Math.floor((bucketIndex * count) / buckets);
+    const end = Math.max(start + 1, Math.floor(((bucketIndex + 1) * count) / buckets));
+    const stateName = getBucketStudyState(subject.id, start, Math.min(end, count));
+    return `<span class="heatmap-cell is-${stateName}"></span>`;
+  }).join("");
+}
+
+function getBucketStudyState(subjectId, start, end) {
+  const states = [];
+  for (let index = start; index < end; index += 1) {
+    states.push(getCardStudyState(subjectId, index));
+  }
+  if (states.includes("due") || states.includes("hard")) return "due";
+  if (states.every((stateName) => stateName === "known")) return "known";
+  if (states.includes("known")) return "learning";
+  if (states.includes("learning")) return "learning";
+  return "unseen";
+}
+
+function getCardStudyState(subjectId, index) {
+  const progress = getCardProgress(subjectId, index);
+  if (!progress) return "unseen";
+  if (progress.dueAt <= Date.now()) return "due";
+  if (progress.grade === "hard") return "hard";
+  if (progress.grade === "easy" || progress.streak >= 2) return "known";
+  return "learning";
+}
+
+function getSubjectHeatmapSummary(subject) {
+  const counts = { unseen: 0, due: 0, hard: 0, learning: 0, known: 0 };
+  subject.slides.forEach((_, index) => {
+    counts[getCardStudyState(subject.id, index)] += 1;
+  });
+  const needsReview = counts.due + counts.hard;
+  return `${formatNumber(counts.known)} đã chắc, ${formatNumber(counts.learning)} đang học, ${formatNumber(needsReview)} cần ôn, ${formatNumber(counts.unseen)} chưa học`;
+}
+
+function getHeatmapLabel(stateName) {
+  const labels = {
+    unseen: "chưa học",
+    due: "cần ôn",
+    hard: "đang lủng",
+    learning: "đang học",
+    known: "đã chắc",
+  };
+  return labels[stateName] || labels.unseen;
 }
 
 function getStatusText(progress) {
