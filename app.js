@@ -3,11 +3,15 @@
 let subjects = [];
 
 const storageKey = "csd-recall-progress-v1";
-const intervals = {
-  hard: 10 * 60 * 1000,
-  good: 24 * 60 * 60 * 1000,
-  easy: 4 * 24 * 60 * 60 * 1000,
-};
+const reviewIntervals = [
+  10 * 60 * 1000,
+  30 * 60 * 1000,
+  2 * 60 * 60 * 1000,
+  24 * 60 * 60 * 1000,
+  3 * 24 * 60 * 60 * 1000,
+  7 * 24 * 60 * 60 * 1000,
+];
+const maxMasteryScore = reviewIntervals.length - 1;
 const answerOptions = ["A", "B", "C", "D", "E"];
 
 let state = {
@@ -81,10 +85,6 @@ function bindEvents() {
   });
   els.answerCheck.addEventListener("click", checkAnswerSelection);
 
-  document.querySelectorAll(".grade-button").forEach((button) => {
-    button.addEventListener("click", () => gradeCurrent(button.dataset.grade || "good"));
-  });
-
   els.resetProgress.addEventListener("click", () => {
     state.progress = {};
     saveProgress();
@@ -110,9 +110,6 @@ function bindEvents() {
     if (event.key === "ArrowLeft") moveCard(-1);
     if (/^[a-e]$/i.test(event.key)) handleAnswerChoice(event.key.toUpperCase());
     if (event.key === "Enter") checkAnswerSelection();
-    if (event.key === "1") gradeCurrent("hard");
-    if (event.key === "2") gradeCurrent("good");
-    if (event.key === "3") gradeCurrent("easy");
   });
 }
 
@@ -134,23 +131,23 @@ function renderModeTabs() {
 function renderSubjects() {
   els.subjectList.innerHTML = subjects.map((subject) => {
     const stats = getSubjectStats(subject);
-    const knownPercent = Math.round((stats.known / stats.total) * 100);
-    const learningPercent = Math.round((stats.learning / stats.total) * 100);
+    const correctPercent = Math.round((stats.correct / stats.total) * 100);
+    const wrongPercent = Math.round((stats.wrong / stats.total) * 100);
     const active = subject.id === state.subjectId ? " is-active" : "";
     return `
-      <button class="subject-button${active}" type="button" data-subject="${subject.id}" aria-pressed="${subject.id === state.subjectId}" aria-label="${subject.code}, tổng ${stats.total} thẻ, ${stats.remaining} còn lại, ${stats.known} đã chắc">
+      <button class="subject-button${active}" type="button" data-subject="${subject.id}" aria-pressed="${subject.id === state.subjectId}" aria-label="${subject.code}, tổng ${stats.total} thẻ, ${stats.correct} đúng, ${stats.wrong} sai, ${stats.unanswered} chưa làm">
         <span class="subject-card-top">
           <span class="subject-code">${subject.code}</span>
           <span class="subject-total">${formatNumber(stats.total)} thẻ</span>
         </span>
         <span class="subject-title">${subject.title}</span>
         <span class="subject-progress-copy">
-          <span><strong>${formatNumber(stats.remaining)}</strong> còn lại</span>
-          <span>${formatNumber(stats.known)} đã chắc</span>
+          <span><strong>${formatNumber(stats.correct)}</strong> đúng</span>
+          <span>${formatNumber(stats.wrong)} sai · ${formatNumber(stats.unanswered)} chưa làm</span>
         </span>
         <span class="progress-track" aria-hidden="true">
-          <span class="progress-known" style="width:${knownPercent}%"></span>
-          <span class="progress-learning" style="width:${learningPercent}%"></span>
+          <span class="progress-correct" style="width:${correctPercent}%"></span>
+          <span class="progress-wrong" style="width:${wrongPercent}%"></span>
         </span>
         <span class="subject-heatmap" aria-hidden="true">${renderSubjectHeatmap(subject, 48)}</span>
       </button>
@@ -186,7 +183,6 @@ function renderStudyCard() {
   renderAnswerPanel(slide);
   void renderSlideSvg(slide, subject);
   els.slideSearch.value = String(card.index + 1);
-  setGradeEnabled(state.answerChecked);
 }
 
 async function renderSlideSvg(slide, subject) {
@@ -223,7 +219,7 @@ function renderQueue() {
   const queue = fullQueue.slice(0, 8);
   els.queueSummary.textContent = `${formatNumber(fullQueue.length)} thẻ`;
   if (queue.length === 0) {
-    els.queueList.innerHTML = `<div class="empty-state">Chưa có thẻ đến hạn. Khi bạn tự chấm mức độ nhớ, các thẻ cần lặp lại sẽ xuất hiện ở đây.</div>`;
+    els.queueList.innerHTML = `<div class="empty-state">Chưa có thẻ đến hạn. Sau khi chọn đáp án, câu sai và câu đến lịch ôn sẽ xuất hiện ở đây.</div>`;
     return;
   }
 
@@ -251,42 +247,20 @@ function renderStats() {
   const allStats = subjects.reduce((acc, subject) => {
     const stats = getSubjectStats(subject);
     acc.total += stats.total;
-    acc.known += stats.known;
-    acc.remaining += stats.remaining;
+    acc.correct += stats.correct;
+    acc.wrong += stats.wrong;
+    acc.unanswered += stats.unanswered;
     return acc;
-  }, { total: 0, known: 0, remaining: 0 });
+  }, { total: 0, correct: 0, wrong: 0, unanswered: 0 });
 
-  els.headerSummary.textContent = `${formatNumber(allStats.total)} thẻ · ${formatNumber(allStats.known)} đã chắc`;
-  els.overallProgress.textContent = `${formatNumber(allStats.remaining)} thẻ còn lại`;
+  els.headerSummary.textContent = `${formatNumber(allStats.total)} thẻ · ${formatNumber(allStats.correct)} đúng · ${formatNumber(allStats.wrong)} sai`;
+  els.overallProgress.textContent = `${formatNumber(allStats.wrong)} sai · ${formatNumber(allStats.unanswered)} chưa làm`;
 }
 
 function moveCard(delta) {
   const subject = getSubject();
   const count = getSlideCount(subject);
   state.currentIndex = (state.currentIndex + delta + count) % count;
-  resetCardInteraction();
-  renderAll();
-}
-
-function gradeCurrent(grade) {
-  if (!state.answerChecked) return;
-  const subject = getSubject();
-  const key = getProgressKey(subject.id, state.currentIndex);
-  const previous = state.progress[key] || {};
-  const now = Date.now();
-  const streak = grade === "hard" ? 0 : (previous.streak || 0) + 1;
-  const multiplier = grade === "easy" ? Math.max(1, streak) : 1;
-
-  state.progress[key] = {
-    grade,
-    streak,
-    seen: (previous.seen || 0) + 1,
-    updatedAt: now,
-    dueAt: now + intervals[grade] * multiplier,
-  };
-
-  saveProgress();
-  state.currentIndex = pickNextIndex();
   resetCardInteraction();
   renderAll();
 }
@@ -305,7 +279,7 @@ function pickNextIndex() {
 function pickFirstUnseen(subject) {
   const count = getSlideCount(subject);
   for (let index = 0; index < count; index += 1) {
-    if (!state.progress[getProgressKey(subject.id, index)]) return index;
+    if (!getCardProgress(subject.id, index)) return index;
   }
   return 0;
 }
@@ -319,17 +293,27 @@ function buildQueue() {
       const progress = getCardProgress(subject.id, index);
       if (!progress) {
         if (state.mode === "learn" && subject.id === state.subjectId) {
-          queue.push({ subject, index, priority: 1, dueAt: index, label: "Chưa học" });
+          queue.push({ subject, index, priority: 2, dueAt: index, label: "Chưa làm" });
         }
+        continue;
+      }
+      if (progress.result === "wrong") {
+        queue.push({
+          subject,
+          index,
+          priority: 0,
+          dueAt: progress.dueAt,
+          label: "Sai - ôn lại ngay",
+        });
         continue;
       }
       if (progress.dueAt <= now) {
         queue.push({
           subject,
           index,
-          priority: 0,
+          priority: 1,
           dueAt: progress.dueAt,
-          label: progress.grade === "hard" ? "Cần lặp lại ngay" : "Đến lịch ôn",
+          label: "Đúng - đến lịch ôn",
         });
       }
     }
@@ -340,25 +324,27 @@ function buildQueue() {
 function getSubjectStats(subject) {
   const now = Date.now();
   let due = 0;
-  let weak = 0;
-  let known = 0;
+  let correct = 0;
+  let wrong = 0;
+  let deep = 0;
   let seen = 0;
   const count = getSlideCount(subject);
   for (let index = 0; index < count; index += 1) {
     const progress = getCardProgress(subject.id, index);
     if (!progress) continue;
     seen += 1;
-    if (progress.grade === "hard") weak += 1;
-    if (progress.grade === "easy" || progress.streak >= 2) known += 1;
+    if (progress.result === "correct") correct += 1;
+    if (progress.result === "wrong") wrong += 1;
+    if (progress.score >= maxMasteryScore) deep += 1;
     if (progress.dueAt <= now) due += 1;
   }
   return {
     due,
-    weak,
-    known,
+    correct,
+    wrong,
+    deep,
     seen,
-    learning: Math.max(0, seen - known),
-    remaining: count - known,
+    unanswered: count - seen,
     total: count,
   };
 }
@@ -437,7 +423,29 @@ function checkAnswerSelection() {
   const answers = getAnswerKeys(getCurrentSlide()?.notes || "");
   if (answers.length === 0 || state.answerChecked || state.selectedAnswers.length === 0) return;
   state.answerChecked = true;
-  renderStudyCard();
+  recordAnswerResult(isAnswerSelectionCorrect(answers));
+  renderAll();
+}
+
+function recordAnswerResult(isCorrect) {
+  const subject = getSubject();
+  const key = getProgressKey(subject.id, state.currentIndex);
+  const previous = getCardProgress(subject.id, state.currentIndex) || {};
+  const previousScore = Number.isFinite(previous.score) ? previous.score : 0;
+  const score = isCorrect ? clamp(previousScore + 1, 1, maxMasteryScore) : 0;
+  const now = Date.now();
+
+  state.progress[key] = {
+    result: isCorrect ? "correct" : "wrong",
+    score,
+    attempts: (previous.attempts || 0) + 1,
+    correct: (previous.correct || 0) + (isCorrect ? 1 : 0),
+    wrong: (previous.wrong || 0) + (isCorrect ? 0 : 1),
+    updatedAt: now,
+    dueAt: now + reviewIntervals[score],
+  };
+
+  saveProgress();
 }
 
 function getAnswerKeys(note) {
@@ -482,10 +490,23 @@ function renderStudyHeatmap(subject, activeIndex) {
   const cells = subject.slides.map((_, index) => {
     const stateName = getCardStudyState(subject.id, index);
     const activeClass = index === activeIndex ? " is-active" : "";
-    return `<span class="heatmap-cell is-${stateName}${activeClass}" title="${subject.code} thẻ ${index + 1}: ${getHeatmapLabel(stateName)}"></span>`;
+    const label = `${subject.code} thẻ ${index + 1}: ${getHeatmapLabel(stateName)}`;
+    return `<button class="heatmap-cell is-${stateName}${activeClass}" type="button" data-index="${index}" title="${label}" aria-label="${label}"></button>`;
   });
   els.studyHeatmap.innerHTML = cells.join("");
   els.studyHeatmap.setAttribute("aria-label", `Heatmap ${subject.code}: ${getSubjectHeatmapSummary(subject)}`);
+  els.studyHeatmap.querySelectorAll(".heatmap-cell").forEach((button) => {
+    button.addEventListener("click", () => {
+      state.currentIndex = Number.parseInt(button.dataset.index || "0", 10);
+      state.mode = "browse";
+      resetCardInteraction();
+      renderAll();
+    });
+  });
+  const activeCell = els.studyHeatmap.querySelector(".heatmap-cell.is-active");
+  if (activeCell) {
+    els.studyHeatmap.scrollLeft = Math.max(0, activeCell.offsetLeft - els.studyHeatmap.clientWidth / 2);
+  }
 }
 
 function renderSubjectHeatmap(subject, buckets) {
@@ -503,53 +524,55 @@ function getBucketStudyState(subjectId, start, end) {
   for (let index = start; index < end; index += 1) {
     states.push(getCardStudyState(subjectId, index));
   }
-  if (states.includes("due") || states.includes("hard")) return "due";
-  if (states.every((stateName) => stateName === "known")) return "known";
-  if (states.includes("known")) return "learning";
-  if (states.includes("learning")) return "learning";
+  if (states.includes("level-0")) return "level-0";
+  if (states.includes("level-1")) return "level-1";
+  if (states.includes("level-2")) return "level-2";
+  if (states.includes("level-3")) return "level-3";
+  if (states.includes("level-4")) return "level-4";
+  if (states.every((stateName) => stateName === "level-5")) return "level-5";
+  if (states.includes("level-5")) return "level-4";
   return "unseen";
 }
 
 function getCardStudyState(subjectId, index) {
   const progress = getCardProgress(subjectId, index);
   if (!progress) return "unseen";
-  if (progress.dueAt <= Date.now()) return "due";
-  if (progress.grade === "hard") return "hard";
-  if (progress.grade === "easy" || progress.streak >= 2) return "known";
-  return "learning";
+  return `level-${clamp(progress.score, 0, maxMasteryScore)}`;
 }
 
 function getSubjectHeatmapSummary(subject) {
-  const counts = { unseen: 0, due: 0, hard: 0, learning: 0, known: 0 };
+  const counts = { unseen: 0, wrong: 0, correct: 0, deep: 0 };
   subject.slides.forEach((_, index) => {
-    counts[getCardStudyState(subject.id, index)] += 1;
+    const progress = getCardProgress(subject.id, index);
+    if (!progress) {
+      counts.unseen += 1;
+    } else if (progress.result === "wrong") {
+      counts.wrong += 1;
+    } else {
+      counts.correct += 1;
+      if (progress.score >= maxMasteryScore) counts.deep += 1;
+    }
   });
-  const needsReview = counts.due + counts.hard;
-  return `${formatNumber(counts.known)} đã chắc, ${formatNumber(counts.learning)} đang học, ${formatNumber(needsReview)} cần ôn, ${formatNumber(counts.unseen)} chưa học`;
+  return `${formatNumber(counts.correct)} đúng, ${formatNumber(counts.wrong)} sai, ${formatNumber(counts.deep)} xanh sâu, ${formatNumber(counts.unseen)} chưa làm`;
 }
 
 function getHeatmapLabel(stateName) {
+  if (stateName.startsWith("level-")) {
+    const score = Number.parseInt(stateName.replace("level-", ""), 10);
+    if (score === 0) return "sai - đỏ, chưa nắm";
+    if (score === maxMasteryScore) return `đúng - xanh sâu ${score}/${maxMasteryScore}`;
+    return `đúng - mức ${score}/${maxMasteryScore}`;
+  }
   const labels = {
-    unseen: "chưa học",
-    due: "cần ôn",
-    hard: "đang lủng",
-    learning: "đang học",
-    known: "đã chắc",
+    unseen: "chưa làm",
   };
   return labels[stateName] || labels.unseen;
 }
 
 function getStatusText(progress) {
-  if (!progress) return "Chưa học";
-  if (progress.grade === "hard") return "Đang lủng";
-  if (progress.grade === "good") return "Đang học";
-  return "Đã chắc";
-}
-
-function setGradeEnabled(enabled) {
-  document.querySelectorAll(".grade-button").forEach((button) => {
-    button.disabled = !enabled;
-  });
+  if (!progress) return "Chưa làm";
+  if (progress.result === "wrong") return "Sai";
+  return `Đúng · mức ${progress.score}/${maxMasteryScore}`;
 }
 
 function resetCardInteraction() {
@@ -558,7 +581,34 @@ function resetCardInteraction() {
 }
 
 function getCardProgress(subjectId, index) {
-  return state.progress[getProgressKey(subjectId, index)] || null;
+  const progress = state.progress[getProgressKey(subjectId, index)];
+  return progress ? normalizeProgress(progress) : null;
+}
+
+function normalizeProgress(progress) {
+  if (progress.result === "correct" || progress.result === "wrong") {
+    return {
+      ...progress,
+      score: clamp(Number.isFinite(progress.score) ? progress.score : 0, 0, maxMasteryScore),
+      dueAt: Number.isFinite(progress.dueAt) ? progress.dueAt : 0,
+    };
+  }
+
+  if (progress.grade) {
+    const isCorrect = progress.grade !== "hard";
+    const score = isCorrect ? clamp(progress.grade === "easy" ? 4 : progress.streak || 2, 1, maxMasteryScore) : 0;
+    return {
+      result: isCorrect ? "correct" : "wrong",
+      score,
+      attempts: progress.seen || 1,
+      correct: isCorrect ? progress.seen || 1 : 0,
+      wrong: isCorrect ? 0 : progress.seen || 1,
+      updatedAt: progress.updatedAt || 0,
+      dueAt: Number.isFinite(progress.dueAt) ? progress.dueAt : 0,
+    };
+  }
+
+  return null;
 }
 
 function getProgressKey(subjectId, index) {

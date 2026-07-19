@@ -23,13 +23,15 @@ CSD Recall feels like a focused digital flashcard desk: bright, direct, and buil
 | Accent hover | --accent-hover | #3143e7 | Hovered primary actions |
 | Accent soft | --accent-soft | #e8eaff | Progress and selected surfaces |
 | On accent | --on-accent | #ffffff | Text on accent controls |
-| Learning | --learning | #ffcd1f | Cards still being learned |
-| Hard | --hard | #e64b4b | Cards needing immediate review |
-| Known | --known | #2eaf7d | Mastered cards |
+| Wrong | --wrong | #e64b4b | Incorrect answers and zero mastery |
+| Correct | --correct | #2eaf7d | Correct answers and positive mastery |
 | Heatmap empty | --heatmap-empty | #dfe3ee | Unseen heatmap cells |
-| Heatmap due | --heatmap-due | #f19898 | Due or hard heatmap cells |
-| Heatmap learning | --heatmap-learning | #ffe17a | Learning heatmap cells |
-| Heatmap known | --heatmap-known | #70caa4 | Known heatmap cells |
+| Heatmap level 0 | --heatmap-level-0 | #e64b4b | Wrong or not understood |
+| Heatmap level 1 | --heatmap-level-1 | #f47b45 | First correct step |
+| Heatmap level 2 | --heatmap-level-2 | #f2b84b | Early recall |
+| Heatmap level 3 | --heatmap-level-3 | #bfd95a | Medium recall |
+| Heatmap level 4 | --heatmap-level-4 | #56bf7b | Strong recall |
+| Heatmap level 5 | --heatmap-level-5 | #168a5a | Deepest recall |
 | Heatmap active | --heatmap-active | #282e3e | Current card heatmap cell |
 | Shadow | --shadow-color | rgba(46, 54, 84, 0.12) | Elevated study card |
 | Shadow strong | --shadow-strong | rgba(46, 54, 84, 0.18) | Hovered study card |
@@ -37,7 +39,8 @@ CSD Recall feels like a focused digital flashcard desk: bright, direct, and buil
 ### Rules
 
 - Accent is reserved for active navigation, focus, answer selection, and primary actions.
-- Hard, learning, and known colors only communicate study status.
+- Wrong and correct colors only communicate answer result.
+- Heatmap colors run from red to deep green; greenest is the deepest recall state.
 - Raw colors must not appear in component rules; extend this table first.
 
 ## 3. Typography
@@ -97,7 +100,7 @@ All spacing derives from a 4px base.
 - **Motion**: micro press feedback only
 
 ### Subject Card
-- **Structure**: course code, title, remaining count, total count, segmented progress track
+- **Structure**: course code, title, correct/wrong/unanswered counts, total count, segmented progress track
 - **Variants**: default, active
 - **States**: default, hover, active, focus, empty progress
 - **Accessibility**: native button with `aria-pressed` and complete progress label
@@ -118,10 +121,10 @@ All spacing derives from a 4px base.
 
 ### Progress Heatmap
 - **Structure**: small status cells for each subject overview and the active study set
-- **Variants**: unseen, due/hard, learning, known, active
-- **States**: visual only, summarized by the parent region label
-- **Accessibility**: subject-level and active-set summary labels carry the counts
-- **Motion**: no decorative motion
+- **Variants**: unseen, level 0, level 1, level 2, level 3, level 4, level 5, active
+- **States**: active study heatmap cells are buttons that jump directly to that card
+- **Accessibility**: each active heatmap cell has a card label and result-depth label
+- **Motion**: micro scale feedback only on interactive active-study cells
 
 ### Answer Choices
 - **Structure**: A-E choice row, compact feedback label, explanation block shown after checking, check command only for multi-answer cards
@@ -131,13 +134,13 @@ All spacing derives from a 4px base.
 - **Motion**: micro press feedback only
 
 ### Study Controls
-- **Structure**: previous, next, then spaced-repetition grade controls
+- **Structure**: previous and next card controls
 - **States**: default, hover, active, focus, disabled
 - **Accessibility**: native buttons with explicit labels and shortcut hints in `title`
 - **Motion**: micro press feedback only
 
 ### Review Queue
-- **Structure**: compact rows with subject, slide, and due state
+- **Structure**: compact rows with subject, slide, and result/due state
 - **Variants**: populated, empty
 - **States**: default, hover, active, focus, selected
 - **Accessibility**: each row is a fully labeled button
