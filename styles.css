@@ -144,7 +144,6 @@ p {
 
 .icon-text-button,
 .round-button,
-.flip-button,
 .mode-button,
 .answer-choice,
 .answer-check-button,
@@ -175,7 +174,6 @@ p {
 
 .icon-text-button:active,
 .round-button:active,
-.flip-button:active,
 .mode-button:active,
 .grade-button:active,
 .queue-item:active,
@@ -581,7 +579,6 @@ h2 {
 
 .flashcard {
   margin: 0;
-  perspective: 1600px;
 }
 
 .flashcard-surface {
@@ -596,16 +593,6 @@ h2 {
   background: var(--surface);
   box-shadow: 0 12px 32px var(--shadow-color);
   text-align: left;
-  transform-style: preserve-3d;
-  transition: transform 320ms cubic-bezier(0.16, 1, 0.3, 1), box-shadow 140ms ease-out;
-}
-
-.flashcard-surface:hover {
-  box-shadow: 0 12px 32px var(--shadow-strong);
-}
-
-.flashcard-surface.is-revealed {
-  transform: rotateY(180deg);
 }
 
 .card-face {
@@ -613,30 +600,12 @@ h2 {
   inset: 0;
   display: grid;
   opacity: 1;
-  backface-visibility: hidden;
   transition: opacity 220ms ease-in-out;
 }
 
 .card-front {
   place-items: center;
   background: var(--surface);
-}
-
-.card-back {
-  grid-template-rows: auto 1fr auto;
-  gap: var(--space-4);
-  padding: var(--space-8);
-  background: var(--surface);
-  transform: rotateY(180deg);
-  pointer-events: none;
-}
-
-.flashcard-surface.is-revealed .card-front {
-  pointer-events: none;
-}
-
-.flashcard-surface.is-revealed .card-back {
-  pointer-events: auto;
 }
 
 .frame-loading {
@@ -671,48 +640,15 @@ h2 {
   position: static !important;
 }
 
-.answer-label {
-  color: var(--accent);
-  font-size: 12px;
-  font-weight: 700;
-}
-
-.notes-content {
-  align-self: center;
-  max-height: 100%;
-  overflow: auto;
-  color: var(--ink);
-  font-size: 18px;
-  font-weight: 500;
-  line-height: 1.55;
-  white-space: pre-wrap;
-  text-wrap: pretty;
-}
-
-.flip-hint {
-  position: absolute;
-  right: var(--space-4);
-  bottom: var(--space-3);
-  color: var(--ink-faint);
-  font-size: 12px;
-  font-weight: 600;
-}
-
-.card-back .flip-hint {
-  position: static;
-  justify-self: end;
-}
-
 .navigation-controls {
   display: grid;
-  grid-template-columns: 48px minmax(180px, 240px) 48px;
+  grid-template-columns: repeat(2, 48px);
   justify-content: center;
   gap: var(--space-4);
   margin: var(--space-6) 0;
 }
 
-.round-button,
-.flip-button {
+.round-button {
   min-height: 48px;
   border-radius: 6px;
   font-weight: 700;
@@ -723,17 +659,6 @@ h2 {
   background: var(--surface);
   font-size: 28px;
   line-height: 1;
-}
-
-.flip-button {
-  border: 1px solid var(--accent);
-  background: var(--accent);
-  color: var(--on-accent);
-  font-size: 16px;
-}
-
-.flip-button:hover {
-  background: var(--accent-hover);
 }
 
 .grade-panel {
@@ -933,14 +858,6 @@ h2 {
     grid-template-columns: repeat(5, minmax(40px, 1fr));
   }
 
-  .card-back {
-    padding: var(--space-5);
-  }
-
-  .notes-content {
-    font-size: 16px;
-  }
-
   .grade-buttons,
   .queue-list {
     grid-template-columns: 1fr;
@@ -966,18 +883,5 @@ h2 {
   *::after {
     transition-duration: 1ms !important;
     scroll-behavior: auto !important;
-  }
-
-  .flashcard-surface.is-revealed {
-    transform: none;
-  }
-
-  .flashcard-surface.is-revealed .card-front {
-    opacity: 0;
-  }
-
-  .flashcard-surface.is-revealed .card-back {
-    opacity: 1;
-    transform: none;
   }
 }

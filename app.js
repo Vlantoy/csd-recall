@@ -14,7 +14,6 @@ let state = {
   subjectId: "",
   mode: "learn",
   currentIndex: 0,
-  revealed: false,
   selectedAnswers: [],
   answerChecked: false,
   progress: loadProgress(),
@@ -33,15 +32,12 @@ const els = {
   frameLoading: document.getElementById("frameLoading"),
   slideCanvas: document.getElementById("slideCanvas"),
   cardFront: document.getElementById("cardFront"),
-  notesBack: document.getElementById("notesBack"),
-  notesContent: document.getElementById("notesContent"),
   studyHeatmap: document.getElementById("studyHeatmap"),
   answerChoices: document.getElementById("answerChoices"),
   answerFeedback: document.getElementById("answerFeedback"),
   answerCheck: document.getElementById("answerCheck"),
   answerExplanation: document.getElementById("answerExplanation"),
-  revealCard: document.getElementById("revealCard"),
-  flipButton: document.getElementById("flipButton"),
+  slideSurface: document.getElementById("slideSurface"),
   prevCard: document.getElementById("prevCard"),
   nextCard: document.getElementById("nextCard"),
   resetProgress: document.getElementById("resetProgress"),
@@ -75,9 +71,6 @@ function bindEvents() {
       renderAll();
     });
   });
-
-  els.revealCard.addEventListener("click", toggleCard);
-  els.flipButton.addEventListener("click", toggleCard);
 
   els.prevCard.addEventListener("click", () => moveCard(-1));
   els.nextCard.addEventListener("click", () => moveCard(1));
@@ -113,11 +106,6 @@ function bindEvents() {
   window.addEventListener("keydown", (event) => {
     if (event.target instanceof HTMLInputElement) return;
     if (event.target instanceof HTMLButtonElement) return;
-    if (event.key === " ") {
-      event.preventDefault();
-      state.revealed = !state.revealed;
-      renderStudyCard();
-    }
     if (event.key === "ArrowRight") moveCard(1);
     if (event.key === "ArrowLeft") moveCard(-1);
     if (/^[a-e]$/i.test(event.key)) handleAnswerChoice(event.key.toUpperCase());
@@ -192,22 +180,13 @@ function renderStudyCard() {
   els.cardPosition.textContent = `Thẻ ${formatNumber(card.index + 1)} / ${formatNumber(count)}`;
   els.statusBadge.textContent = statusText;
   els.sessionFill.style.transform = `scaleX(${(card.index + 1) / count})`;
-  els.revealCard.classList.toggle("is-revealed", state.revealed);
-  els.revealCard.setAttribute("aria-pressed", String(state.revealed));
-  els.revealCard.setAttribute("aria-label", getCardAccessibleLabel(subject, card.index, count, slide));
-  els.cardFront.setAttribute("aria-hidden", String(state.revealed));
-  els.notesBack.setAttribute("aria-hidden", String(!state.revealed));
-  els.flipButton.textContent = state.revealed ? "Xem lại câu hỏi" : "Lật thẻ";
+  els.slideSurface.setAttribute("aria-label", getCardAccessibleLabel(subject, card.index, count, slide));
+  els.cardFront.setAttribute("aria-hidden", "false");
   renderStudyHeatmap(subject, card.index);
   renderAnswerPanel(slide);
   void renderSlideSvg(slide, subject);
-  if (state.revealed) {
-    renderCurrentNotes();
-  } else {
-    els.notesContent.textContent = "";
-  }
   els.slideSearch.value = String(card.index + 1);
-  setGradeEnabled(state.revealed || state.answerChecked);
+  setGradeEnabled(state.answerChecked);
 }
 
 async function renderSlideSvg(slide, subject) {
@@ -281,11 +260,6 @@ function renderStats() {
   els.overallProgress.textContent = `${formatNumber(allStats.remaining)} thẻ còn lại`;
 }
 
-function toggleCard() {
-  state.revealed = !state.revealed;
-  renderStudyCard();
-}
-
 function moveCard(delta) {
   const subject = getSubject();
   const count = getSlideCount(subject);
@@ -295,7 +269,7 @@ function moveCard(delta) {
 }
 
 function gradeCurrent(grade) {
-  if (!state.revealed && !state.answerChecked) return;
+  if (!state.answerChecked) return;
   const subject = getSubject();
   const key = getProgressKey(subject.id, state.currentIndex);
   const previous = state.progress[key] || {};
@@ -410,11 +384,6 @@ function getSlideCount(subject) {
   return subject.slides.length;
 }
 
-function renderCurrentNotes() {
-  const note = getCurrentSlide()?.notes || "";
-  els.notesContent.textContent = note || "Slide này chưa có đáp án.";
-}
-
 function renderAnswerPanel(slide) {
   const answerInfo = getAnswerInfo(slide?.notes || "");
   const answers = answerInfo.keys;
@@ -504,11 +473,9 @@ function getAnswerFeedbackText(answers) {
 
 function getCardAccessibleLabel(subject, index, count, slide) {
   const position = `${subject.code}, thẻ ${index + 1} trên ${count}.`;
-  if (!state.revealed) {
-    return `${position} Mặt trước là ảnh slide. Nhấn để xem đáp án.`;
-  }
-  const note = slide?.notes || "Slide này chưa có đáp án.";
-  return `${position} Đáp án: ${note} Nhấn để xem lại câu hỏi.`;
+  const answerInfo = getAnswerInfo(slide?.notes || "");
+  const suffix = answerInfo.keys.length ? "Chọn đáp án A đến E ở bên dưới." : "Slide này chưa có đáp án tự động.";
+  return `${position} Mặt trước là ảnh slide câu hỏi. ${suffix}`;
 }
 
 function renderStudyHeatmap(subject, activeIndex) {
@@ -586,7 +553,6 @@ function setGradeEnabled(enabled) {
 }
 
 function resetCardInteraction() {
-  state.revealed = false;
   state.selectedAnswers = [];
   state.answerChecked = false;
 }

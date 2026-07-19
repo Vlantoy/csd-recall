@@ -36,7 +36,7 @@ CSD Recall feels like a focused digital flashcard desk: bright, direct, and buil
 
 ### Rules
 
-- Accent is reserved for active navigation, focus, and the main flip action.
+- Accent is reserved for active navigation, focus, answer selection, and primary actions.
 - Hard, learning, and known colors only communicate study status.
 - Raw colors must not appear in component rules; extend this table first.
 
@@ -84,7 +84,7 @@ All spacing derives from a 4px base.
 
 - App header spans the viewport; study content is centered at a 1120px maximum.
 - Subject cards form a three-column overview at desktop and a horizontal snap row on narrow screens.
-- The flashcard uses a stable 16:9 front and matching back surface.
+- The flashcard uses a stable 16:9 slide surface; answers and explanations live in the answer panel below.
 - Heatmaps use compact fixed cells that wrap on mobile without changing card controls.
 - Breakpoints: 760px for compact controls, 980px for subject overview changes.
 
@@ -110,11 +110,11 @@ All spacing derives from a 4px base.
 - **Motion**: 140ms color and transform feedback
 
 ### Flashcard
-- **Structure**: progress header, front slide surface, back notes surface, flip hint
-- **Variants**: front, revealed, loading, error
-- **States**: clickable surface, keyboard flip, focused card
-- **Accessibility**: card button announces front/back state; embedded SVG is decorative to the card label
-- **Motion**: 320ms 3D rotateY flip; reduced-motion fallback uses opacity
+- **Structure**: progress header and front slide surface only
+- **Variants**: slide, loading, error
+- **States**: static display surface
+- **Accessibility**: slide region announces subject, position, and answer-selection next step
+- **Motion**: no flip motion; only loading opacity follows global transition rules
 
 ### Progress Heatmap
 - **Structure**: small status cells for each subject overview and the active study set
@@ -131,7 +131,7 @@ All spacing derives from a 4px base.
 - **Motion**: micro press feedback only
 
 ### Study Controls
-- **Structure**: previous, flip, next, then spaced-repetition grade controls
+- **Structure**: previous, next, then spaced-repetition grade controls
 - **States**: default, hover, active, focus, disabled
 - **Accessibility**: native buttons with explicit labels and shortcut hints in `title`
 - **Motion**: micro press feedback only
