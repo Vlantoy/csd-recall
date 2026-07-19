@@ -8,12 +8,15 @@ const intervals = {
   good: 24 * 60 * 60 * 1000,
   easy: 4 * 24 * 60 * 60 * 1000,
 };
+const answerOptions = ["A", "B", "C", "D", "E"];
 
 let state = {
   subjectId: "",
   mode: "learn",
   currentIndex: 0,
   revealed: false,
+  selectedAnswers: [],
+  answerChecked: false,
   progress: loadProgress(),
 };
 
@@ -33,6 +36,9 @@ const els = {
   notesBack: document.getElementById("notesBack"),
   notesContent: document.getElementById("notesContent"),
   studyHeatmap: document.getElementById("studyHeatmap"),
+  answerChoices: document.getElementById("answerChoices"),
+  answerFeedback: document.getElementById("answerFeedback"),
+  answerCheck: document.getElementById("answerCheck"),
   revealCard: document.getElementById("revealCard"),
   flipButton: document.getElementById("flipButton"),
   prevCard: document.getElementById("prevCard"),
@@ -63,8 +69,8 @@ function bindEvents() {
   document.querySelectorAll(".mode-button").forEach((button) => {
     button.addEventListener("click", () => {
       state.mode = button.dataset.mode || "review";
-      state.revealed = false;
       state.currentIndex = pickInitialIndex();
+      resetCardInteraction();
       renderAll();
     });
   });
@@ -74,6 +80,12 @@ function bindEvents() {
 
   els.prevCard.addEventListener("click", () => moveCard(-1));
   els.nextCard.addEventListener("click", () => moveCard(1));
+  els.answerChoices.addEventListener("click", (event) => {
+    const button = event.target instanceof Element ? event.target.closest(".answer-choice") : null;
+    if (!button) return;
+    handleAnswerChoice(button.dataset.answer || "");
+  });
+  els.answerCheck.addEventListener("click", checkAnswerSelection);
 
   document.querySelectorAll(".grade-button").forEach((button) => {
     button.addEventListener("click", () => gradeCurrent(button.dataset.grade || "good"));
@@ -83,7 +95,7 @@ function bindEvents() {
     state.progress = {};
     saveProgress();
     state.currentIndex = 0;
-    state.revealed = false;
+    resetCardInteraction();
     renderAll();
   });
 
@@ -93,12 +105,13 @@ function bindEvents() {
     const subject = getSubject();
     state.currentIndex = clamp(parsed - 1, 0, getSlideCount(subject) - 1);
     state.mode = "browse";
-    state.revealed = false;
+    resetCardInteraction();
     renderAll();
   });
 
   window.addEventListener("keydown", (event) => {
     if (event.target instanceof HTMLInputElement) return;
+    if (event.target instanceof HTMLButtonElement) return;
     if (event.key === " ") {
       event.preventDefault();
       state.revealed = !state.revealed;
@@ -106,6 +119,8 @@ function bindEvents() {
     }
     if (event.key === "ArrowRight") moveCard(1);
     if (event.key === "ArrowLeft") moveCard(-1);
+    if (/^[a-e]$/i.test(event.key)) handleAnswerChoice(event.key.toUpperCase());
+    if (event.key === "Enter") checkAnswerSelection();
     if (event.key === "1") gradeCurrent("hard");
     if (event.key === "2") gradeCurrent("good");
     if (event.key === "3") gradeCurrent("easy");
@@ -157,7 +172,7 @@ function renderSubjects() {
     button.addEventListener("click", () => {
       state.subjectId = button.dataset.subject || subjects[0].id;
       state.currentIndex = pickInitialIndex();
-      state.revealed = false;
+      resetCardInteraction();
       renderAll();
     });
   });
@@ -183,6 +198,7 @@ function renderStudyCard() {
   els.notesBack.setAttribute("aria-hidden", String(!state.revealed));
   els.flipButton.textContent = state.revealed ? "Xem lại câu hỏi" : "Lật thẻ";
   renderStudyHeatmap(subject, card.index);
+  renderAnswerPanel(slide);
   void renderSlideSvg(slide, subject);
   if (state.revealed) {
     renderCurrentNotes();
@@ -245,7 +261,7 @@ function renderQueue() {
     button.addEventListener("click", () => {
       state.subjectId = button.dataset.subject || state.subjectId;
       state.currentIndex = Number.parseInt(button.dataset.index || "0", 10);
-      state.revealed = false;
+      resetCardInteraction();
       renderAll();
     });
   });
@@ -273,7 +289,7 @@ function moveCard(delta) {
   const subject = getSubject();
   const count = getSlideCount(subject);
   state.currentIndex = (state.currentIndex + delta + count) % count;
-  state.revealed = false;
+  resetCardInteraction();
   renderAll();
 }
 
@@ -296,7 +312,7 @@ function gradeCurrent(grade) {
 
   saveProgress();
   state.currentIndex = pickNextIndex();
-  state.revealed = false;
+  resetCardInteraction();
   renderAll();
 }
 
@@ -398,6 +414,82 @@ function renderCurrentNotes() {
   els.notesContent.textContent = note || "Slide này chưa có đáp án.";
 }
 
+function renderAnswerPanel(slide) {
+  const answers = getAnswerKeys(slide?.notes || "");
+  const isMulti = answers.length > 1;
+  const hasAnswer = answers.length > 0;
+  const isChecked = state.answerChecked;
+  const isCorrect = isChecked && isAnswerSelectionCorrect(answers);
+
+  els.answerChoices.innerHTML = answerOptions.map((option) => {
+    const selected = state.selectedAnswers.includes(option);
+    const correct = isChecked && answers.includes(option);
+    const wrong = isChecked && selected && !answers.includes(option);
+    const missed = isChecked && !selected && answers.includes(option);
+    const classes = [
+      "answer-choice",
+      selected ? "is-selected" : "",
+      correct ? "is-correct" : "",
+      wrong ? "is-wrong" : "",
+      missed ? "is-missed" : "",
+    ].filter(Boolean).join(" ");
+    return `<button class="${classes}" type="button" data-answer="${option}" aria-pressed="${selected}" ${!hasAnswer || isChecked ? "disabled" : ""}>${option}</button>`;
+  }).join("");
+
+  els.answerFeedback.classList.toggle("is-correct", isCorrect);
+  els.answerFeedback.classList.toggle("is-wrong", isChecked && !isCorrect);
+  els.answerFeedback.textContent = getAnswerFeedbackText(answers);
+  els.answerCheck.classList.toggle("is-hidden", !isMulti);
+  els.answerCheck.disabled = !hasAnswer || !isMulti || isChecked || state.selectedAnswers.length === 0;
+}
+
+function handleAnswerChoice(answer) {
+  if (!answerOptions.includes(answer) || state.answerChecked) return;
+  const answers = getAnswerKeys(getCurrentSlide()?.notes || "");
+  if (answers.length === 0) return;
+
+  if (answers.length > 1) {
+    state.selectedAnswers = state.selectedAnswers.includes(answer)
+      ? state.selectedAnswers.filter((item) => item !== answer)
+      : [...state.selectedAnswers, answer].sort();
+    renderStudyCard();
+    return;
+  }
+
+  state.selectedAnswers = [answer];
+  checkAnswerSelection();
+}
+
+function checkAnswerSelection() {
+  const answers = getAnswerKeys(getCurrentSlide()?.notes || "");
+  if (answers.length === 0 || state.answerChecked || state.selectedAnswers.length === 0) return;
+  state.answerChecked = true;
+  state.revealed = true;
+  renderStudyCard();
+}
+
+function getAnswerKeys(note) {
+  const text = note.trim();
+  if (!text) return [];
+  const match = text.match(/^(?:answer\s*[:\-]?\s*|đáp\s*án\s*[:\-]?\s*)?\(?([A-Ea-e]{1,5})\)?(?=\s|$|[.,:)])/i);
+  if (!match) return [];
+  return [...new Set(match[1].toUpperCase().split("").filter((item) => answerOptions.includes(item)))].sort();
+}
+
+function isAnswerSelectionCorrect(answers) {
+  const selected = [...state.selectedAnswers].sort();
+  return answers.length === selected.length && answers.every((answer, index) => answer === selected[index]);
+}
+
+function getAnswerFeedbackText(answers) {
+  if (answers.length === 0) return "Chưa có đáp án";
+  if (!state.answerChecked) {
+    return answers.length > 1 ? "Chọn nhiều đáp án" : "Chưa chọn";
+  }
+  const answerText = answers.join(", ");
+  return isAnswerSelectionCorrect(answers) ? `Đúng: ${answerText}` : `Chưa đúng: ${answerText}`;
+}
+
 function getCardAccessibleLabel(subject, index, count, slide) {
   const position = `${subject.code}, thẻ ${index + 1} trên ${count}.`;
   if (!state.revealed) {
@@ -479,6 +571,12 @@ function setGradeEnabled(enabled) {
   document.querySelectorAll(".grade-button").forEach((button) => {
     button.disabled = !enabled;
   });
+}
+
+function resetCardInteraction() {
+  state.revealed = false;
+  state.selectedAnswers = [];
+  state.answerChecked = false;
 }
 
 function getCardProgress(subjectId, index) {

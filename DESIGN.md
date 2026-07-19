@@ -123,6 +123,13 @@ All spacing derives from a 4px base.
 - **Accessibility**: subject-level and active-set summary labels carry the counts
 - **Motion**: no decorative motion
 
+### Answer Choices
+- **Structure**: A-E choice row, compact feedback label, check command only for multi-answer cards
+- **Variants**: single-answer, multi-answer, missing-answer
+- **States**: default, selected, correct, wrong, missed, disabled, focus
+- **Accessibility**: native buttons with pressed state and live feedback
+- **Motion**: micro press feedback only
+
 ### Study Controls
 - **Structure**: previous, flip, next, then spaced-repetition grade controls
 - **States**: default, hover, active, focus, disabled
