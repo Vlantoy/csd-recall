@@ -1,0 +1,92 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Ung dung on tap theo mon voi the hoc va lap lai ngat quang tu cac file slide HTML.">
+  <title>CSD Recall</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="subject-rail" aria-label="Danh sách môn học">
+      <div class="brand-block">
+        <div class="brand-mark" aria-hidden="true">CR</div>
+        <div>
+          <p class="eyebrow">CSD Recall</p>
+          <h1>Ôn đúng phần đang lủng</h1>
+        </div>
+      </div>
+      <div class="subject-list" id="subjectList"></div>
+    </aside>
+
+    <main class="study-stage">
+      <header class="topbar">
+        <div class="mode-tabs" role="group" aria-label="Che do hoc">
+          <button class="mode-button is-active" type="button" data-mode="review">Ôn đến hạn</button>
+          <button class="mode-button" type="button" data-mode="learn">Học mới</button>
+          <button class="mode-button" type="button" data-mode="browse">Duyệt slide</button>
+        </div>
+        <label class="search-field">
+          <span>Tìm</span>
+          <input id="slideSearch" type="search" placeholder="Nhập số slide">
+        </label>
+      </header>
+
+      <section class="stats-grid" aria-label="Tong quan tien do">
+        <article class="stat-card">
+          <span>Đến hạn</span>
+          <strong id="dueStat">0</strong>
+        </article>
+        <article class="stat-card">
+          <span>Đang yếu</span>
+          <strong id="weakStat">0</strong>
+        </article>
+        <article class="stat-card">
+          <span>Đã biết</span>
+          <strong id="knownStat">0</strong>
+        </article>
+      </section>
+
+      <section class="study-card" id="studyCard" aria-live="polite">
+        <div class="card-meta">
+          <span id="courseBadge" class="badge">MKT101</span>
+          <span id="slideBadge">Slide 1</span>
+          <span id="statusBadge">Chưa học</span>
+        </div>
+        <div class="prompt-face" id="promptFace">
+          <p class="prompt-kicker">Tự kiểm tra</p>
+          <h2 id="promptTitle">Hãy nhớ lại nội dung slide này trước khi xem đáp án.</h2>
+          <p id="promptHint">Bấm "Lật thẻ" để mở slide gốc, sau đó tự chấm mức độ nhớ.</p>
+        </div>
+        <div class="answer-frame is-hidden" id="answerFrame">
+          <iframe id="sourceFrame" title="Slide nguon"></iframe>
+        </div>
+        <div class="action-bar">
+          <button class="secondary-action" type="button" id="prevCard">Trước</button>
+          <button class="primary-action" type="button" id="revealCard">Lật thẻ</button>
+          <button class="secondary-action" type="button" id="nextCard">Sau</button>
+        </div>
+        <div class="grade-bar">
+          <button class="grade-button hard" type="button" data-grade="hard">Chưa biết</button>
+          <button class="grade-button good" type="button" data-grade="good">Tạm ổn</button>
+          <button class="grade-button easy" type="button" data-grade="easy">Đã chắc</button>
+        </div>
+      </section>
+    </main>
+
+    <aside class="queue-rail" aria-label="Hang doi on tap">
+      <div class="panel-header">
+        <div>
+          <p class="eyebrow">Hang doi</p>
+          <h2>Cần ôn tiếp</h2>
+        </div>
+        <button class="ghost-action" type="button" id="resetProgress">Đặt lại</button>
+      </div>
+      <div class="queue-list" id="queueList"></div>
+    </aside>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
