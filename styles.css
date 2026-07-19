@@ -350,6 +350,7 @@ h1 {
 }
 
 .answer-frame {
+  position: relative;
   min-height: 300px;
   border: 1px solid var(--border-default);
   border-radius: 12px;
@@ -358,6 +359,21 @@ h1 {
   opacity: 1;
   transform: translateY(0);
   transition: opacity 220ms ease-in-out, transform 220ms ease-in-out;
+}
+
+.frame-loading {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: #121214;
+  color: #f5f5f7;
+  font-weight: 600;
+  z-index: 1;
+}
+
+.frame-loading.is-hidden {
+  display: none;
 }
 
 .answer-frame.is-hidden {

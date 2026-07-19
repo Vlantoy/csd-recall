@@ -38,7 +38,7 @@ const intervals = {
 
 let state = {
   subjectId: subjects[0].id,
-  mode: "review",
+  mode: "learn",
   currentIndex: 0,
   revealed: false,
   progress: loadProgress(),
@@ -58,6 +58,7 @@ const els = {
   promptTitle: document.getElementById("promptTitle"),
   promptHint: document.getElementById("promptHint"),
   answerFrame: document.getElementById("answerFrame"),
+  frameLoading: document.getElementById("frameLoading"),
   sourceFrame: document.getElementById("sourceFrame"),
   revealCard: document.getElementById("revealCard"),
   prevCard: document.getElementById("prevCard"),
@@ -117,6 +118,7 @@ function bindEvents() {
   els.sourceFrame.addEventListener("load", () => {
     syncFrameToCurrentSlide();
     learnActualSlideCount();
+    els.frameLoading.classList.add("is-hidden");
   });
 
   window.addEventListener("keydown", (event) => {
@@ -187,16 +189,23 @@ function renderStudyCard() {
   els.promptHint.textContent = getPromptHint(progress);
   els.revealCard.textContent = state.revealed ? "Ẩn slide" : "Lật thẻ";
   els.answerFrame.classList.toggle("is-hidden", !state.revealed);
-  if (state.revealed) loadFrameSource(subject);
+  if (state.revealed) {
+    void loadFrameSource(subject);
+  } else {
+    els.frameLoading.classList.add("is-hidden");
+  }
   els.slideSearch.value = String(card.index + 1);
   setGradeEnabled(state.revealed);
-  if (state.revealed) syncFrameToCurrentSlide();
 }
 
 async function loadFrameSource(subject) {
+  els.frameLoading.classList.remove("is-hidden");
   const source = await getSubjectFrameSource(subject);
   if (els.sourceFrame.getAttribute("src") !== source) {
     els.sourceFrame.src = source;
+  } else {
+    syncFrameToCurrentSlide();
+    els.frameLoading.classList.add("is-hidden");
   }
 }
 
